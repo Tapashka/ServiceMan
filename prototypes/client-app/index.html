@@ -740,9 +740,9 @@
       <h1 class="page-title" style="font-size:19px; margin-bottom:8px;">Заявка почти готова</h1>
 
       <div class="concierge-card" id="chosenSto" style="margin-bottom:12px; padding:10px 12px;">
-        <div class="avatar" style="width:36px; height:36px; font-size:12px;">АП</div>
+        <div class="avatar" style="width:36px; height:36px; font-size:12px;">АН</div>
         <div style="flex:1;">
-          <div class="name">Автосервис «Профсоюзная»</div>
+          <div class="name">Автосервис на Независимости</div>
           <div class="sub">4.9 ★ · 1,4 км · предложение 120 Br</div>
         </div>
       </div>
@@ -856,9 +856,9 @@
         <div class="backbtn" onclick="go('status')">←</div>
       </div>
       <div class="chat-header">
-        <div class="avatar" id="chatAvatar">АП</div>
+        <div class="avatar" id="chatAvatar">АН</div>
         <div>
-          <div class="name" id="chatName">Автосервис «Профсоюзная»</div>
+          <div class="name" id="chatName">Автосервис на Независимости</div>
           <div class="sub">Обычно отвечают за 5–10 минут</div>
         </div>
       </div>
@@ -1191,7 +1191,7 @@ function confirmMapPin(){
 
 /* ---------------- ЗАЯВКА / ПРЕДЛОЖЕНИЯ СТО ---------------- */
 const offers = [
-  {id:1, initials:'АП', name:'Автосервис «Профсоюзная»', rating:4.9, distance:1.4, price:120, note:'Готовы принять сегодня в 18:00', badges:['Ответили первыми'],
+  {id:1, initials:'АН', name:'Автосервис на Независимости', rating:4.9, distance:1.4, price:120, note:'Готовы принять сегодня в 18:00', badges:['Ответили первыми'],
     address:'просп. Независимости, 45', estimate:[{item:'Колодки передние (TRW, Германия)', price:80},{item:'Работа по замене', price:40}]},
   {id:2, initials:'М+', name:'СТО «Мотор+»', rating:4.7, distance:2.1, price:135, note:'Готовы принять сегодня в 20:00', badges:[],
     address:'ул. Мясникова, 78', estimate:[{item:'Колодки передние (Bosch, Германия)', price:90},{item:'Работа по замене', price:45}]},
@@ -1311,8 +1311,8 @@ let chatMessages = [
 ];
 
 function openChat(){
-  const name = chosenOffer ? chosenOffer.name : 'Автосервис «Профсоюзная»';
-  const initials = chosenOffer ? chosenOffer.initials : 'АП';
+  const name = chosenOffer ? chosenOffer.name : 'Автосервис на Независимости';
+  const initials = chosenOffer ? chosenOffer.initials : 'АН';
   document.getElementById('chatName').textContent = name;
   document.getElementById('chatAvatar').textContent = initials;
   renderChatMessages();
@@ -1538,7 +1538,7 @@ function renderRatingForm(){
   const el = document.getElementById('statusContent');
   el.innerHTML = `
     <div class="content-card">
-      <h4>Оцените Автосервис «Профсоюзная»</h4>
+      <h4>Оцените Автосервис на Независимости</h4>
       <p>Ремонт завершён — расскажите, как всё прошло. Это займёт 10 секунд.</p>
       <div class="star-row" id="starRow"></div>
       <textarea class="field" id="ratingComment" style="margin-top:6px;" placeholder="Комментарий (необязательно): что понравилось или что стоит улучшить"></textarea>
