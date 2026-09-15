@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мой Автомеханик — панель СТО</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2430;
+    --ink-soft:#4D5769;
+    --ink-faint:#8891A0;
+    --paper:#F6F4EF;
+    --paper-dim:#ECE8DE;
+    --card:#FFFFFF;
+    --amber:#E8A33D;
+    --amber-dark:#C77F1D;
+    --amber-soft:#FBF0DC;
+    --copper:#B5602C;
+    --teal:#3F7D6B;
+    --teal-soft:#E3EEE9;
+    --alert:#C1503F;
+    --alert-soft:#F6E4E0;
+    --line:#DEDACE;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--paper);
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .app{ display:flex; min-height:100vh; }
+
+  /* ---------------- SIDEBAR ---------------- */
+  .sidebar{
+    width:248px; flex:none;
+    background:var(--ink); color:#fff;
+    display:flex; flex-direction:column;
+    padding:24px 18px;
+    position:sticky; top:0; height:100vh;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .brand .mark{
+    width:32px; height:32px; border-radius:9px; background:var(--amber);
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .brand .mark svg{ width:18px; height:18px; }
+  .brand .txt .n{ font-family:'Space Grotesk',sans-serif; font-size:14.5px; font-weight:700; line-height:1.2; }
+  .brand .txt .s{ font-size:10.5px; color:rgba(255,255,255,.45); letter-spacing:.04em; text-transform:uppercase; margin-top:1px; }
+
+  .nav{ margin-top:34px; display:flex; flex-direction:column; gap:3px; }
+  .nav-item{
+    display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:10px;
+    color:rgba(255,255,255,.6); cursor:pointer; font-size:14px; font-weight:500; position:relative;
+  }
+  .nav-item svg{ width:18px; height:18px; flex:none; }
+  .nav-item:hover{ background:rgba(255,255,255,.05); color:#fff; }
+  .nav-item.active{ background:rgba(255,255,255,.1); color:#fff; }
+  .nav-item .count{
+    margin-left:auto; background:var(--amber); color:#2B1A03; font-size:11px; font-weight:700;
+    padding:1px 7px; border-radius:20px; font-family:'IBM Plex Mono',monospace;
+  }
+
+  .sidebar-footer{ margin-top:auto; padding-top:18px; border-top:1px solid rgba(255,255,255,.1); }
+  .sto-mini{ display:flex; align-items:center; gap:10px; cursor:pointer; }
+  .sto-mini .av{
+    width:36px; height:36px; border-radius:50%; background:var(--teal); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13px; flex:none;
+  }
+  .sto-mini .name{ font-size:13px; font-weight:600; }
+  .sto-mini .rating{ font-size:11px; color:rgba(255,255,255,.5); margin-top:1px; }
+
+  /* ---------------- CONTENT ---------------- */
+  .content{ flex:1; padding:36px 44px 60px; max-width:1180px; }
+  .topbar{ display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:14px; }
+  .topbar h1{ font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:600; letter-spacing:-.01em; }
+  .topbar p.sub{ color:var(--ink-soft); font-size:13.5px; margin-top:4px; }
+
+  .filter-row{ display:flex; gap:8px; margin-bottom:22px; flex-wrap:wrap; }
+  .filter-chip{
+    padding:8px 14px; border-radius:20px; border:1.5px solid var(--line); background:var(--card);
+    font-size:12.5px; color:var(--ink-soft); cursor:pointer;
+  }
+  .filter-chip.selected{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); gap:16px; }
+
+  /* ---------------- REQUEST CARD ---------------- */
+  .req-card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px;
+    cursor:pointer; transition:.15s;
+  }
+  .req-card:hover{ border-color:var(--ink-soft); }
+  .req-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .req-top .car{ font-family:'Space Grotesk',sans-serif; font-size:15.5px; font-weight:600; }
+  .badge{
+    font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:20px; letter-spacing:.03em; flex:none;
+    text-transform:uppercase; font-family:'IBM Plex Mono',monospace;
+  }
+  .badge.urgent{ background:var(--alert-soft); color:var(--alert); }
+  .badge.new{ background:var(--amber-soft); color:var(--amber-dark); }
+
+  .req-symptom{ font-size:13.5px; color:var(--ink-soft); line-height:1.5; margin-top:8px; }
+  .tag-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .tag-mini{ font-size:11px; background:var(--paper-dim); color:var(--ink-soft); padding:3px 9px; border-radius:14px; }
+
+  .req-meta{ display:flex; gap:14px; margin-top:14px; flex-wrap:wrap; }
+  .req-meta .m{ font-size:11.5px; color:var(--ink-faint); display:flex; align-items:center; gap:5px; }
+  .req-meta svg{ width:13px; height:13px; }
+
+  .req-bottom{ display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+  .req-price{ font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; color:var(--ink); }
+  .req-price span{ font-size:10.5px; color:var(--ink-faint); font-weight:400; display:block; font-family:'Inter',sans-serif; }
+
+  .btn{
+    border:none; border-radius:11px; padding:10px 16px; font-family:'Inter',sans-serif;
+    font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  .btn:active{ transform:scale(.97); }
+  .btn-primary{ background:var(--amber); color:#2B1A03; }
+  .btn-primary:hover{ background:var(--amber-dark); }
+  .btn-dark{ background:var(--ink); color:#fff; }
+  .btn-outline{ background:transparent; color:var(--ink); border:1.5px solid var(--line); }
+  .btn-teal{ background:var(--teal); color:#fff; }
+  .btn-block{ width:100%; }
+
+  .req-detail{
+    margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);
+    display:none; font-size:13px; color:var(--ink-soft); line-height:1.6;
+  }
+  .req-detail.open{ display:block; }
+  .req-detail .locked{ color:var(--ink-faint); font-style:italic; }
+  .req-detail .row{ display:flex; justify-content:space-between; margin-top:6px; }
+  .req-detail .row b{ color:var(--ink); font-weight:600; }
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--ink-faint);
+  }
+  .empty-state svg{ width:36px; height:36px; margin-bottom:10px; opacity:.5; }
+  .empty-state p{ font-size:14px; }
+
+  /* ---------------- MY JOBS LIST ---------------- */
+  .job-row{
+    display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line);
+    border-radius:14px; padding:15px 18px; margin-bottom:10px; cursor:pointer;
+  }
+  .job-row:hover{ border-color:var(--ink-soft); }
+  .job-row .car{ font-family:'Space Grotesk',sans-serif; font-size:14.5px; font-weight:600; width:170px; flex:none; }
+  .job-row .desc{ flex:1; font-size:13px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .status-pill{
+    font-size:11px; font-weight:600; padding:5px 11px; border-radius:20px; flex:none;
+    font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.02em;
+  }
+  .status-pill.s0{ background:var(--amber-soft); color:var(--amber-dark); }
+  .status-pill.s1{ background:#E9E4F5; color:#6A4FA0; }
+  .status-pill.s2{ background:var(--alert-soft); color:var(--alert); }
+  .status-pill.s3{ background:#DDEAF6; color:#2C6FA3; }
+  .status-pill.s4{ background:var(--teal-soft); color:var(--teal); }
+
+  /* ---------------- JOB DETAIL ---------------- */
+  .backlink{ display:flex; align-items:center; gap:8px; color:var(--ink-soft); font-size:13.5px; cursor:pointer; margin-bottom:18px; }
+  .backlink svg{ width:16px; height:16px; }
+
+  .detail-grid{ display:grid; grid-template-columns:1fr 300px; gap:24px; align-items:start; }
+  @media (max-width:900px){ .detail-grid{ grid-template-columns:1fr; } }
+
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px; margin-bottom:16px; }
+  .panel h4{ font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600; margin-bottom:12px; }
+
+  .stage-track{ display:flex; justify-content:space-between; margin:8px 0 26px; position:relative; }
+  .stage-track::before{ content:""; position:absolute; top:9px; left:16px; right:16px; height:2px; background:var(--line); z-index:0; }
+  .stage-dot-wrap{ display:flex; flex-direction:column; align-items:center; gap:6px; z-index:1; width:70px; }
+  .stage-dot{ width:20px; height:20px; border-radius:50%; background:var(--card); border:2px solid var(--line); }
+  .stage-dot-wrap.done .stage-dot{ background:var(--teal); border-color:var(--teal); }
+  .stage-dot-wrap.current .stage-dot{ background:var(--amber); border-color:var(--amber-dark); box-shadow:0 0 0 4px rgba(232,163,61,.25); }
+  .stage-dot-wrap span.lbl{ font-size:10.5px; text-align:center; color:var(--ink-faint); line-height:1.2; }
+  .stage-dot-wrap.current span.lbl{ color:var(--ink); font-weight:600; }
+
+  .client-row{ display:flex; gap:12px; align-items:center; margin-bottom:14px; }
+  .client-row .av{ width:42px; height:42px; border-radius:50%; background:var(--teal-soft); color:var(--teal); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; flex:none; }
+  .client-row .name{ font-size:14px; font-weight:600; }
+  .client-row .phone{ font-size:12.5px; color:var(--ink-faint); margin-top:2px; font-family:'IBM Plex Mono',monospace; }
+
+  .kv{ font-size:13px; color:var(--ink-soft); padding:7px 0; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; }
+  .kv:last-child{ border-bottom:none; }
+  .kv b{ color:var(--ink); font-weight:600; text-align:right; }
+
+  .line-item{ display:flex; gap:8px; margin-bottom:8px; }
+  .line-item input{ border:1.5px solid var(--line); border-radius:10px; padding:9px 11px; font-size:13px; font-family:'Inter',sans-serif; }
+  .line-item .li-name{ flex:1; }
+  .line-item .li-price{ width:100px; font-family:'IBM Plex Mono',monospace; }
+  .add-line{ font-size:12.5px; color:var(--ink-soft); cursor:pointer; display:inline-flex; align-items:center; gap:5px; margin-bottom:14px; }
+  .add-line svg{ width:14px; height:14px; }
+
+  .cost-total{ display:flex; justify-content:space-between; padding-top:12px; margin-top:6px; border-top:1.5px solid var(--ink); }
+  .cost-total span{ font-weight:700; color:var(--ink); font-family:'IBM Plex Mono',monospace; font-size:16px; }
+
+  textarea.note{
+    width:100%; border:1.5px solid var(--line); border-radius:12px; padding:12px; font-family:'Inter',sans-serif;
+    font-size:13px; min-height:70px; resize:none; margin-bottom:14px;
+  }
+  .progress-bar{ height:8px; border-radius:5px; background:var(--paper-dim); overflow:hidden; margin:12px 0; }
+  .progress-bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--amber),var(--copper)); border-radius:5px; }
+
+  .waiting-note{ display:flex; gap:10px; align-items:center; background:var(--amber-soft); border:1px solid #F0DBAE; border-radius:12px; padding:12px 14px; font-size:12.5px; color:#5C4419; margin-top:10px; }
+  .waiting-note svg{ width:16px; height:16px; flex:none; }
+
+  /* ---------------- HISTORY ---------------- */
+  .hist-row{ display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:15px 18px; margin-bottom:10px; }
+  .hist-row .car{ font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; width:170px; flex:none; }
+  .hist-row .date{ font-size:12px; color:var(--ink-faint); width:110px; flex:none; font-family:'IBM Plex Mono',monospace; }
+  .stars{ color:var(--amber-dark); font-size:13px; letter-spacing:1px; flex:1; }
+  .hist-row .payout{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px; }
+
+  /* ---------------- PROFILE ---------------- */
+  .profile-card{ background:var(--ink); color:#fff; border-radius:18px; padding:28px; margin-bottom:20px; }
+  .profile-card .n{ font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:600; }
+  .profile-card .a{ font-size:13px; color:rgba(255,255,255,.55); margin-top:4px; }
+  .profile-card .stat-row{ display:flex; gap:30px; margin-top:20px; }
+  .profile-card .stat .v{ font-family:'IBM Plex Mono',monospace; font-size:20px; font-weight:600; }
+  .profile-card .stat .k{ font-size:11px; color:rgba(255,255,255,.5); margin-top:2px; }
+
+  .toast{
+    position:fixed; right:32px; bottom:32px;
+    background:var(--ink); color:#fff; padding:14px 18px; border-radius:14px;
+    font-size:13.5px; display:flex; gap:10px; align-items:center;
+    opacity:0; transform:translateY(10px); transition:.25s; pointer-events:none; z-index:100;
+  }
+  .toast.show{ opacity:1; transform:translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ================= SIDEBAR ================= -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#1B2430" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-6h14l2 6"/><rect x="3" y="13" width="18" height="6" rx="2"/><circle cx="7.5" cy="19" r="1.2"/><circle cx="16.5" cy="19" r="1.2"/></svg></div>
+      <div class="txt">
+        <div class="n">Мой Автомеханик</div>
+        <div class="s">для СТО</div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <div class="nav-item active" data-view="marketplace" onclick="showView('marketplace')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l1-4h14l1 4"/><path d="M4 8h16v11a1 1 0 01-1 1H5a1 1 0 01-1-1V8z"/><path d="M9 12h6"/></svg>
+        Новые заявки
+        <span class="count" id="navCountNew">0</span>
+      </div>
+      <div class="nav-item" data-view="myjobs" onclick="showView('myjobs')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-6h14l2 6"/><rect x="3" y="13" width="18" height="6" rx="2"/><circle cx="7.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/></svg>
+        Мои заявки
+        <span class="count" id="navCountMine">0</span>
+      </div>
+      <div class="nav-item" data-view="history" onclick="showView('history')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        История
+      </div>
+      <div class="nav-item" data-view="profile" onclick="showView('profile')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1.6-3.4 4.4-5 7.5-5s5.9 1.6 7.5 5"/></svg>
+        Профиль СТО
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sto-mini" onclick="showView('profile')">
+        <div class="av">АП</div>
+        <div>
+          <div class="name">Автосервис «Профсоюзная»</div>
+          <div class="rating">★ 4.8 · 640 заказов</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CONTENT ================= -->
+  <div class="content">
+
+    <!-- ============ NEW REQUESTS / MARKETPLACE ============ -->
+    <div class="view" id="view-marketplace">
+      <div class="topbar">
+        <div>
+          <h1>Новые заявки</h1>
+          <p class="sub">Заявки от клиентов приложения «Мой Автомеханик» рядом с вами</p>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <div class="filter-chip selected" data-f="all" onclick="setFilter(this,'all')">Все районы</div>
+        <div class="filter-chip" data-f="near" onclick="setFilter(this,'near')">Рядом (до 3 км)</div>
+        <div class="filter-chip" data-f="today" onclick="setFilter(this,'today')">На сегодня</div>
+        <div class="filter-chip" data-f="urgent" onclick="setFilter(this,'urgent')">Срочные</div>
+      </div>
+
+      <div class="grid" id="marketGrid"></div>
+    </div>
+
+    <!-- ============ MY JOBS (LIST) ============ -->
+    <div class="view" id="view-myjobs" style="display:none;">
+      <div class="topbar">
+        <div>
+          <h1>Мои заявки</h1>
+          <p class="sub">Заказы, которые вы взяли в работу</p>
+        </div>
+      </div>
+      <div id="myjobsList"></div>
+    </div>
+
+    <!-- ============ JOB DETAIL ============ -->
+    <div class="view" id="view-jobdetail" style="display:none;">
+      <div class="backlink" onclick="showView('myjobs')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Мои заявки
+      </div>
+      <div class="topbar">
+        <div>
+          <h1 id="jdCarTitle">Kia Rio, 2019</h1>
+          <p class="sub" id="jdOrderId">Заявка №0231</p>
+        </div>
+      </div>
+
+      <div class="stage-track" id="jdStageTrack"></div>
+
+      <div class="detail-grid">
+        <div id="jdMainCol"></div>
+        <div>
+          <div class="panel">
+            <h4>Клиент</h4>
+            <div class="client-row">
+              <div class="av" id="jdClientAv">АИ</div>
+              <div>
+                <div class="name" id="jdClientName">Анна Иванова</div>
+                <div class="phone" id="jdClientPhone">+7 999 123-45-67</div>
+              </div>
+            </div>
+            <div class="kv"><span>Адрес подачи</span><b id="jdAddress">ул. Садовая, 14</b></div>
+            <div class="kv"><span>Слот</span><b id="jdSlot">Сегодня 18:00–20:00</b></div>
+            <div class="kv"><span>Автоконсьерж</span><b id="jdConcierge">Игорь</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ HISTORY ============ -->
+    <div class="view" id="view-history" style="display:none;">
+      <div class="topbar">
+        <div>
+          <h1>История заказов</h1>
+          <p class="sub">Завершённые заявки и оценки клиентов</p>
+        </div>
+      </div>
+      <div id="historyList"></div>
+    </div>
+
+    <!-- ============ PROFILE ============ -->
+    <div class="view" id="view-profile" style="display:none;">
+      <div class="topbar"><div><h1>Профиль СТО</h1></div></div>
+
+      <div class="profile-card">
+        <div class="n">Автосервис «Профсоюзная»</div>
+        <div class="a">г. Москва, ул. Профсоюзная, 45, стр. 2</div>
+        <div class="stat-row">
+          <div class="stat"><div class="v">4.8 ★</div><div class="k">рейтинг</div></div>
+          <div class="stat"><div class="v">640</div><div class="k">заказов выполнено</div></div>
+          <div class="stat"><div class="v">96%</div><div class="k">заявок в срок</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h4>Специализация</h4>
+        <div class="tag-row">
+          <span class="tag-mini">Тормозная система</span>
+          <span class="tag-mini">Плановое ТО</span>
+          <span class="tag-mini">Диагностика</span>
+          <span class="tag-mini">Кондиционеры</span>
+          <span class="tag-mini">Электрика</span>
+        </div>
+      </div>
+
+      <button class="btn btn-outline">Редактировать профиль</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast">Заявка взята в работу</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+let requests = [
+  {
+    id:'0231', car:'Kia Rio, 2019', symptom:'Обнаружен износ передних тормозных колодок — заявка передана от клиента дословно: «стучит спереди при повороте руля».',
+    tags:['Стук или скрип'], district:'Тверской', distance:1.4, slot:'Сегодня 18:00–20:00',
+    priceMin:90, priceMax:180, urgent:false, postedAgo:'12 мин назад',
+    client:'Анна Иванова', phone:'+7 999 123-45-67', address:'ул. Садовая, 14, кв. 27',
+    concierge:'Игорь', status:'new', stage:0, expanded:false
+  },
+  {
+    id:'0244', car:'Hyundai Solaris, 2021', symptom:'Не холодит кондиционер, посторонний звук при включении.',
+    tags:['Кондиционер не холодит'], district:'Хамовники', distance:3.1, slot:'Завтра утром',
+    priceMin:60, priceMax:120, urgent:false, postedAgo:'40 мин назад',
+    client:'Мария Соколова', phone:'+7 999 555-21-09', address:'Комсомольский пр-т, 9',
+    concierge:'Дмитрий', status:'new', stage:0, expanded:false
+  },
+  {
+    id:'0251', car:'Volkswagen Polo, 2018', symptom:'Горит лампочка Check Engine на панели, машина дёргается на холостых.',
+    tags:['Горит лампочка на панели'], district:'Донской', distance:2.0, slot:'Сегодня 14:00–16:00',
+    priceMin:45, priceMax:150, urgent:true, postedAgo:'6 мин назад',
+    client:'Елена Титова', phone:'+7 999 887-14-02', address:'Ленинский пр-т, 62',
+    concierge:'Игорь', status:'new', stage:0, expanded:false
+  },
+  {
+    id:'0198', car:'Skoda Rapid, 2017', symptom:'Плановое ТО-2, дополнительно просит проверить тормоза и уровень масла.',
+    tags:['Плановое ТО'], district:'Тверской', distance:0.8, slot:'Сегодня 18:00–20:00',
+    priceMin:150, priceMax:270, urgent:false, postedAgo:'1 ч назад',
+    client:'Ольга Петрова', phone:'+7 999 442-98-31', address:'Тверская ул., 22',
+    concierge:'Дмитрий', status:'new', stage:0, expanded:false
+  },
+  {
+    id:'0260', car:'Renault Logan, 2016', symptom:'Плохо заводится в холод, подозрение на аккумулятор.',
+    tags:['Плохо заводится'], district:'Пресненский', distance:4.6, slot:'Завтра утром',
+    priceMin:60, priceMax:150, urgent:false, postedAgo:'2 ч назад',
+    client:'Наталья Волкова', phone:'+7 999 671-33-80', address:'Кудринская пл., 1',
+    concierge:'Игорь', status:'new', stage:0, expanded:false
+  }
+];
+
+const stages = [
+  {label:'Принято', action:'Начать диагностику'},
+  {label:'Диагностика', action:'Перейти к смете'},
+  {label:'Смета', action:'Отправить клиенту'},
+  {label:'Ремонт', action:'Завершить ремонт'},
+  {label:'Готово', action:'Завершить заказ'}
+];
+
+let history = [
+  {car:'Chery Tiggo 4, 2020', date:'20 авг', rating:5, payout:230},
+  {car:'Kia Rio, 2020', date:'15 авг', rating:5, payout:160},
+  {car:'Lada Vesta, 2019', date:'9 авг', rating:4, payout:95}
+];
+
+let currentFilter = 'all';
+let openJobId = null;
+
+/* ---------------- NAV ---------------- */
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=> v.style.display='none');
+  document.getElementById('view-'+id).style.display='block';
+  document.querySelectorAll('.nav-item').forEach(n=> n.classList.toggle('active', n.dataset.view===id));
+  if(id==='marketplace') renderMarket();
+  if(id==='myjobs') renderMyJobs();
+  if(id==='history') renderHistory();
+  window.scrollTo(0,0);
+}
+
+/* ---------------- MARKETPLACE ---------------- */
+function setFilter(el,f){
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  currentFilter = f;
+  renderMarket();
+}
+
+function filteredNew(){
+  return requests.filter(r=>{
+    if(r.status!=='new') return false;
+    if(currentFilter==='near') return r.distance<=3;
+    if(currentFilter==='today') return r.slot.startsWith('Сегодня');
+    if(currentFilter==='urgent') return r.urgent;
+    return true;
+  });
+}
+
+function renderMarket(){
+  const grid = document.getElementById('marketGrid');
+  const list = filteredNew();
+  updateCounts();
+
+  if(list.length===0){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M9 15c1 1 5 1 6 0"/></svg>
+      <p>По этому фильтру пока нет заявок</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(r=>`
+    <div class="req-card" id="card-${r.id}">
+      <div onclick="toggleCard('${r.id}')">
+        <div class="req-top">
+          <div class="car">${r.car}</div>
+          ${r.urgent ? '<div class="badge urgent">Срочно</div>' : '<div class="badge new">Новая</div>'}
+        </div>
+        <div class="req-symptom">${r.symptom.length>90 ? r.symptom.slice(0,90)+'…' : r.symptom}</div>
+        <div class="tag-row">${r.tags.map(t=>`<span class="tag-mini">${t}</span>`).join('')}</div>
+        <div class="req-meta">
+          <div class="m"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s7-5.3 7-11a7 7 0 10-14 0c0 5.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.3"/></svg>${r.district} · ${r.distance} км</div>
+          <div class="m"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>${r.slot}</div>
+          <div class="m">${r.postedAgo}</div>
+        </div>
+        <div class="req-detail ${r.expanded?'open':''}" id="detail-${r.id}">
+          <p>${r.symptom}</p>
+          <div class="row"><span>Клиент</span><span class="locked">доступно после взятия в работу</span></div>
+          <div class="row"><span>Адрес</span><span class="locked">р-н ${r.district}, ${r.distance} км от вас</span></div>
+        </div>
+      </div>
+      <div class="req-bottom">
+        <div class="req-price"><span>Ориентир</span>${r.priceMin.toLocaleString('ru')}–${r.priceMax.toLocaleString('ru')} Br</div>
+        <button class="btn btn-primary" onclick="event.stopPropagation(); takeJob('${r.id}')">Взять в работу</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleCard(id){
+  const r = requests.find(x=>x.id===id);
+  r.expanded = !r.expanded;
+  document.getElementById('detail-'+id).classList.toggle('open', r.expanded);
+}
+
+function takeJob(id){
+  const r = requests.find(x=>x.id===id);
+  r.status = 'taken';
+  r.stage = 0;
+  showToast(`Заявка №${r.id} взята в работу — теперь она в «Моих заявках»`);
+  renderMarket();
+  updateCounts();
+}
+
+/* ---------------- MY JOBS ---------------- */
+function myActiveJobs(){ return requests.filter(r=>r.status==='taken'); }
+
+function renderMyJobs(){
+  const list = myActiveJobs();
+  const el = document.getElementById('myjobsList');
+  updateCounts();
+  if(list.length===0){
+    el.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13l2-6h14l2 6"/><rect x="3" y="13" width="18" height="6" rx="2"/></svg>
+      <p>Пока нет активных заявок — возьмите заказ во вкладке «Новые заявки»</p>
+    </div>`;
+    return;
+  }
+  el.innerHTML = list.map(r=>`
+    <div class="job-row" onclick="openJob('${r.id}')">
+      <div class="car">${r.car}</div>
+      <div class="desc">${stages[r.stage].label} · заявка №${r.id}</div>
+      <div class="status-pill s${r.stage}">${stages[r.stage].label}</div>
+    </div>
+  `).join('');
+}
+
+function openJob(id){
+  openJobId = id;
+  const r = requests.find(x=>x.id===id);
+  document.getElementById('jdCarTitle').textContent = r.car;
+  document.getElementById('jdOrderId').textContent = 'Заявка №'+r.id;
+  document.getElementById('jdClientAv').textContent = r.client.split(' ').map(w=>w[0]).join('').toUpperCase();
+  document.getElementById('jdClientName').textContent = r.client;
+  document.getElementById('jdClientPhone').textContent = r.phone;
+  document.getElementById('jdAddress').textContent = r.address;
+  document.getElementById('jdSlot').textContent = r.slot;
+  document.getElementById('jdConcierge').textContent = r.concierge;
+  renderStageTrack(r);
+  renderJobMain(r);
+  document.querySelectorAll('.view').forEach(v=> v.style.display='none');
+  document.getElementById('view-jobdetail').style.display='block';
+  window.scrollTo(0,0);
+}
+
+function renderStageTrack(r){
+  const track = document.getElementById('jdStageTrack');
+  track.innerHTML = stages.map((s,i)=>{
+    let cls = i<r.stage ? 'done' : (i===r.stage ? 'current' : '');
+    return `<div class="stage-dot-wrap ${cls}"><div class="stage-dot"></div><span class="lbl">${s.label}</span></div>`;
+  }).join('');
+}
+
+let lineItems = [
+  {name:'Колодки передние (запчасть)', price:90},
+  {name:'Работа по замене', price:45}
+];
+
+function renderJobMain(r){
+  const el = document.getElementById('jdMainCol');
+  let html = '';
+
+  if(r.stage===0){
+    html = `
+      <div class="panel">
+        <h4>Машина принята</h4>
+        <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.6;">${r.symptom}</p>
+        <div class="tag-row" style="margin-top:12px;">${r.tags.map(t=>`<span class="tag-mini">${t}</span>`).join('')}</div>
+        <button class="btn btn-primary btn-block" style="margin-top:18px;" onclick="advanceStage()">Начать диагностику</button>
+      </div>`;
+  } else if(r.stage===1){
+    html = `
+      <div class="panel">
+        <h4>Диагностика</h4>
+        <textarea class="note" placeholder="Опишите, что обнаружили при осмотре...">${r.symptom}</textarea>
+        <button class="btn btn-primary btn-block" onclick="advanceStage()">Перейти к смете</button>
+      </div>`;
+  } else if(r.stage===2){
+    html = `
+      <div class="panel">
+        <h4>Смета</h4>
+        <div id="lineItemsBox"></div>
+        <div class="add-line" onclick="addLineItem()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+          Добавить позицию
+        </div>
+        <div class="cost-total"><span>Итого</span><span id="lineItemsTotal">0 Br</span></div>
+        <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="sendEstimate()">Отправить клиенту</button>
+        <div id="estimateWaiting"></div>
+      </div>`;
+  } else if(r.stage===3){
+    html = `
+      <div class="panel">
+        <h4>Ремонт идёт</h4>
+        <p style="font-size:13.5px; color:var(--ink-soft);">Смета одобрена клиентом. Отметьте завершение, когда работы будут готовы.</p>
+        <div class="progress-bar"><i style="width:60%"></i></div>
+        <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="advanceStage()">Завершить ремонт</button>
+      </div>`;
+  } else if(r.stage===4){
+    html = `
+      <div class="panel">
+        <h4>Готово к выдаче</h4>
+        <p style="font-size:13.5px; color:var(--ink-soft);">Автоконсьерж ${r.concierge} везёт машину клиенту. Оплата спишется автоматически по прибытии.</p>
+        <div class="cost-total"><span>К оплате</span><span>135 Br</span></div>
+        <button class="btn btn-teal btn-block" style="margin-top:16px;" onclick="finishJob()">Завершить заказ</button>
+      </div>`;
+  }
+  el.innerHTML = html;
+  if(r.stage===2) renderLineItems();
+}
+
+function renderLineItems(){
+  const box = document.getElementById('lineItemsBox');
+  box.innerHTML = lineItems.map((li,i)=>`
+    <div class="line-item">
+      <input class="li-name" value="${li.name}" oninput="lineItems[${i}].name=this.value">
+      <input class="li-price" value="${li.price}" oninput="lineItems[${i}].price=parseInt(this.value)||0; updateTotal();">
+    </div>`).join('');
+  updateTotal();
+}
+function addLineItem(){
+  lineItems.push({name:'', price:0});
+  renderLineItems();
+}
+function updateTotal(){
+  const total = lineItems.reduce((s,li)=>s+(li.price||0),0);
+  document.getElementById('lineItemsTotal').textContent = total.toLocaleString('ru')+' Br';
+}
+
+function sendEstimate(){
+  document.getElementById('estimateWaiting').innerHTML = `
+    <div class="waiting-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      Смета отправлена клиенту, ждём согласования
+    </div>
+    <button class="btn btn-outline btn-block" style="margin-top:12px;" onclick="advanceStage()">Клиент одобрил смету</button>`;
+}
+
+function advanceStage(){
+  const r = requests.find(x=>x.id===openJobId);
+  r.stage = Math.min(r.stage+1, 4);
+  renderStageTrack(r);
+  renderJobMain(r);
+  renderMyJobs();
+}
+
+function finishJob(){
+  const r = requests.find(x=>x.id===openJobId);
+  r.status = 'done';
+  const total = lineItems.reduce((s,li)=>s+(li.price||0),0) || 135;
+  history.unshift({car:r.car, date:'сегодня', rating:5, payout:total});
+  showToast(`Заказ №${r.id} завершён, клиент оплатил ${total.toLocaleString('ru')} Br`);
+  showView('myjobs');
+}
+
+/* ---------------- HISTORY ---------------- */
+function renderHistory(){
+  const el = document.getElementById('historyList');
+  el.innerHTML = history.map(h=>`
+    <div class="hist-row">
+      <div class="car">${h.car}</div>
+      <div class="date">${h.date}</div>
+      <div class="stars">${'★'.repeat(h.rating)}${'☆'.repeat(5-h.rating)}</div>
+      <div class="payout">${h.payout.toLocaleString('ru')} Br</div>
+    </div>`).join('');
+}
+
+/* ---------------- COMMON ---------------- */
+function updateCounts(){
+  document.getElementById('navCountNew').textContent = requests.filter(r=>r.status==='new').length;
+  document.getElementById('navCountMine').textContent = requests.filter(r=>r.status==='taken').length;
+}
+function showToast(text){
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 2600);
+}
+
+renderMarket();
+updateCounts();
+</script>
+</body>
+</html>

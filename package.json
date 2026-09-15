@@ -1,0 +1,11 @@
+{
+  "name": "moy-avtomekhanik",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Мой Автомеханик — мобильная платформа автосервиса для женщин и маркетплейс заявок для СТО",
+  "scripts": {
+    "start": "npx --yes serve . -l 4173",
+    "dev": "npm start"
+  },
+  "license": "UNLICENSED"
+}
