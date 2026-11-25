@@ -20,6 +20,12 @@
 | Мой автомеханик (клиентка) | [moy-avtomekhanik.apk](https://github.com/Tapashka/ServiceMan/releases/latest/download/moy-avtomekhanik.apk) | [.ipa без подписи](https://github.com/Tapashka/ServiceMan/releases/latest/download/moy-avtomekhanik-ios-unsigned.ipa) · [симулятор](https://github.com/Tapashka/ServiceMan/releases/latest/download/moy-avtomekhanik-ios-simulator.zip) |
 | Консьерж | [ma-konsierzh.apk](https://github.com/Tapashka/ServiceMan/releases/latest/download/ma-konsierzh.apk) | [.ipa без подписи](https://github.com/Tapashka/ServiceMan/releases/latest/download/ma-konsierzh-ios-unsigned.ipa) · [симулятор](https://github.com/Tapashka/ServiceMan/releases/latest/download/ma-konsierzh-ios-simulator.zip) |
 
+## Боевой сервер
+
+Сервер развёрнут на Render: **https://moy-avtomekhanik.onrender.com**. Там же доступны веб-версии: `/client/`, `/concierge/`, `/sto/`, `/dispatcher/`. Мобильные приложения подключаются к нему по умолчанию.
+
+Сервер на бесплатном плане: после 15 минут без запросов он засыпает, первое открытие занимает около минуты, данные сбрасываются при перезапуске.
+
 ## Быстрый старт
 
 Нужен Node.js 22.5 или новее: используется встроенный SQLite.
@@ -135,7 +141,7 @@ npm run open:client:android                      # Android Studio
 npm run open:client:ios                          # Xcode (на Mac)
 ```
 
-- Без `MA_SERVER_URL` приложения подключаются к локальному серверу: на Android-эмуляторе это `http://10.0.2.2:8080`, на iOS-симуляторе `http://localhost:8080`. Адрес можно сменить прямо в приложении: нажмите на индикатор связи вверху экрана.
+- По умолчанию приложения подключаются к `https://moy-avtomekhanik.onrender.com`. Для локального сервера соберите с `MA_SERVER_URL=local`: Android-эмулятор → `http://10.0.2.2:8080`, iOS-симулятор → `http://localhost:8080`. Адрес можно сменить прямо в приложении: нажмите на индикатор связи вверху экрана.
 - Для HTTP-сервера в демо разрешён незашифрованный трафик (`usesCleartextTraffic`, `NSAllowsArbitraryLoads`). Для публикации в магазины нужен HTTPS, а эти исключения надо убрать.
 - Разрешения: геопозиция (маршрут до СТО у клиентки, трансляция поездки у консьержа), уведомления, камера (акты у консьержа).
 - Идентификаторы: `by.moyavtomekhanik.app` и `by.moyavtomekhanik.concierge`. Иконки и заставки лежат в `mobile/*/assets`, перегенерировать их можно командой `npx @capacitor/assets generate`.

@@ -1,8 +1,8 @@
 // Собирает веб-часть мобильных приложений из общих исходников apps/ в mobile/<app>/www.
 //   node scripts/build-www.mjs            — оба приложения
 //   node scripts/build-www.mjs client     — только «Мой автомеханик»
-// Адрес сервера экосистемы задаётся переменной MA_SERVER_URL (например https://api.example.by).
-// Без неё: Android-эмулятор → http://10.0.2.2:8080, iOS-симулятор → http://localhost:8080.
+// Адрес сервера экосистемы: переменная MA_SERVER_URL, по умолчанию — боевой сервер на Render.
+// Для локальной разработки: MA_SERVER_URL=local (Android-эмулятор → 10.0.2.2:8080, iOS-симулятор → localhost:8080).
 // В самом приложении адрес можно сменить, нажав на индикатор связи.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,7 +14,9 @@ const APPS = {
   concierge: { files: ['index.html', 'concierge-app.js'] }
 };
 const only = process.argv[2];
-const server = process.env.MA_SERVER_URL || '';
+const DEFAULT_SERVER = 'https://moy-avtomekhanik.onrender.com';
+const env = process.env.MA_SERVER_URL;
+const server = env === 'local' ? '' : (env || DEFAULT_SERVER);
 
 for (const [name, cfg] of Object.entries(APPS)) {
   if (only && only !== name) continue;
@@ -39,5 +41,5 @@ if (!window.MA_CONFIG.server) {
 }
 `);
   fs.copyFileSync(path.join(root, 'mobile', 'scripts', 'native.js'), path.join(out, 'native.js'));
-  console.log(`✓ ${name}: ${path.relative(root, out)}  (сервер: ${server || 'по умолчанию для эмулятора'})`);
+  console.log(`✓ ${name}: ${path.relative(root, out)}  (сервер: ${server || 'локальный, для эмулятора'})`);
 }
