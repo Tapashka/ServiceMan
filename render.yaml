@@ -8,7 +8,8 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
-    autoDeploy: true
+    # Деплой запускает GitHub Actions через deploy hook после зелёных тестов (см. README → «Автодеплой»).
+    autoDeploy: false
     envVars:
       - key: DB_FILE
         value: /data/ecosystem.db
