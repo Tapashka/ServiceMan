@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Мой автомеханик · Консьерж</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: one phone-sized app column, centred on desktop with a side note; full width on phones. Tokens = дизайн-система проекта */
+:root{
+  --ink:#1B2430;--ink-soft:#4D5769;--ink-faint:#8891A0;
+  --paper:#F6F4EF;--paper-dim:#ECE8DE;--card:#FFFFFF;
+  --amber:#E8A33D;--amber-dark:#C77F1D;--copper:#B5602C;
+  --teal:#3F7D6B;--alert:#C1503F;--line:#DEDACE;
+  --on-amber:#1B2430;--shade:rgba(27,36,48,.45);
+  --f-head:"Space Grotesk",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#ECE8DE;--ink-soft:#B9B6AD;--ink-faint:#878D97;
+  --paper:#14191F;--paper-dim:#1E252D;--card:#1A2028;
+  --amber:#E8A33D;--amber-dark:#F0B65E;--copper:#D9895A;
+  --teal:#5FA58F;--alert:#E07463;--line:#2D353F;--on-amber:#1B2430;--shade:rgba(0,0,0,.6);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --ink:#ECE8DE;--ink-soft:#B9B6AD;--ink-faint:#878D97;
+  --paper:#14191F;--paper-dim:#1E252D;--card:#1A2028;
+  --amber:#E8A33D;--amber-dark:#F0B65E;--copper:#D9895A;
+  --teal:#5FA58F;--alert:#E07463;--line:#2D353F;--on-amber:#1B2430;--shade:rgba(0,0,0,.6);color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper-dim);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;padding-inline:16px;padding-block:24px}
+.wrap{display:flex;gap:32px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.note{max-width:300px;min-width:0;color:var(--ink-soft);font-size:14px;padding-top:8px}
+.note h1{font-family:var(--f-head);font-size:24px;line-height:1.15;color:var(--ink);margin:0 0 8px;text-wrap:balance}
+.note p{margin:0 0 10px}
+.note .k{font-family:var(--f-mono);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--copper)}
+.note ol{padding-left:18px;margin:0 0 10px}
+.note li{margin-bottom:4px}
+
+.phone{width:390px;max-width:100%;height:800px;max-height:calc(100vh - 48px);min-height:620px;background:var(--paper);border:1px solid var(--line);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 18px 50px -20px var(--shade)}
+@media (max-width:460px){body{padding-inline:0;padding-block:0}.phone{border-radius:0;border:0;height:100vh;max-height:none}.note{padding-inline:16px;padding-block:20px}}
+
+.top{padding:14px 18px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);background:var(--paper)}
+.top h2{font-family:var(--f-head);font-size:19px;margin:0;flex:1;min-width:0}
+.back{border:0;background:none;color:var(--ink);font-size:22px;line-height:1;padding:2px 6px 2px 0;cursor:pointer}
+.screen{flex:1;overflow-y:auto;padding:14px 16px 20px;display:flex;flex-direction:column;gap:12px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--card)}
+.tabs button{border:0;background:none;padding:9px 0 11px;font:500 11px var(--f-body);color:var(--ink-faint);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.tabs button.on{color:var(--ink)}
+.tabs button.on svg{stroke:var(--amber-dark)}
+.badge-dot{position:relative}
+.badge-dot[data-n]::after{content:attr(data-n);position:absolute;top:-4px;right:-8px;background:var(--alert);color:#fff;font:600 10px var(--f-mono);border-radius:8px;padding:0 4px}
+
+button:focus-visible,input:focus-visible,label:focus-within{outline:2px solid var(--amber);outline-offset:2px}
+
+.shift{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.shift .t{flex:1;min-width:0}
+.shift b{display:block;font-family:var(--f-head);font-size:16px}
+.shift small{color:var(--ink-soft)}
+.sw{width:50px;height:30px;border-radius:15px;background:var(--line);border:0;position:relative;cursor:pointer;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--card);transition:left .15s}
+.sw.on{background:var(--teal)}.sw.on::after{left:23px}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink-soft);border-radius:16px;padding:5px 11px;font:500 13px var(--f-body);cursor:pointer}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;display:flex;flex-direction:column;gap:8px}
+.card.tap{cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.card.tap:hover{border-color:var(--ink-faint)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sp{flex:1}
+.lbl{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint)}
+.pill{font:600 11px var(--f-mono);text-transform:uppercase;letter-spacing:.04em;padding:3px 7px;border-radius:6px;background:var(--paper-dim);color:var(--ink-soft)}
+.pill.urg{background:color-mix(in srgb,var(--alert) 16%,transparent);color:var(--alert)}
+.pill.ok{background:color-mix(in srgb,var(--teal) 16%,transparent);color:var(--teal)}
+.pill.am{background:color-mix(in srgb,var(--amber) 22%,transparent);color:var(--amber-dark)}
+.money{font:600 17px var(--f-mono);font-variant-numeric:tabular-nums}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.car{font-family:var(--f-head);font-weight:600;font-size:16px}
+.route{display:grid;grid-template-columns:14px 1fr;gap:2px 8px;font-size:14px}
+.route i{width:10px;height:10px;border-radius:50%;border:2px solid var(--ink-soft);margin-top:4px;justify-self:center}
+.route i.end{background:var(--amber);border-color:var(--amber-dark)}
+.route .ln{width:2px;background:var(--line);justify-self:center;height:12px}
+.muted{color:var(--ink-soft);font-size:13px}
+.hid{color:var(--ink-faint);font-style:italic;font-size:13px}
+
+.btn{border:0;border-radius:12px;padding:13px 16px;font:600 15px var(--f-body);cursor:pointer;width:100%}
+.btn.pri{background:var(--amber);color:var(--on-amber)}
+.btn.pri:hover{background:var(--amber-dark)}
+.btn.sec{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn.dan{background:none;color:var(--alert);border:1px solid color-mix(in srgb,var(--alert) 40%,transparent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+.map{height:150px;border-radius:14px;border:1px solid var(--line);background:
+ linear-gradient(90deg,transparent 48%,var(--line) 48% 52%,transparent 52%) 0 0/60px 60px,
+ linear-gradient(0deg,transparent 48%,var(--line) 48% 52%,transparent 52%) 0 0/60px 60px,var(--paper-dim);position:relative;overflow:hidden}
+.map svg{position:absolute;inset:0;width:100%;height:100%}
+.map .att{position:absolute;right:6px;bottom:4px;font:10px var(--f-body);color:var(--ink-faint)}
+
+.steps{display:flex;flex-direction:column;gap:0}
+.st{display:grid;grid-template-columns:22px 1fr;gap:10px;font-size:14px;padding-bottom:10px;position:relative}
+.st .d{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);background:var(--card);margin-top:1px;z-index:1}
+.st::before{content:"";position:absolute;left:10px;top:20px;bottom:0;width:2px;background:var(--line)}
+.st:last-child::before{display:none}
+.st.done .d{background:var(--teal);border-color:var(--teal)}
+.st.cur .d{border-color:var(--amber);background:var(--amber)}
+.st.cur b{font-weight:600}
+.st span{color:var(--ink-soft)}
+.st.done span{color:var(--ink-faint)}
+
+.timer{display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 12px;background:color-mix(in srgb,var(--amber) 14%,var(--card));font-size:13px}
+.timer .mono{font-size:20px;font-weight:600}
+.timer.late{background:color-mix(in srgb,var(--alert) 14%,var(--card))}
+
+.photos{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ph{aspect-ratio:1;max-width:100%;border:1.5px dashed var(--ink-faint);border-radius:10px;background:var(--paper-dim);font:500 10px var(--f-body);color:var(--ink-soft);display:flex;align-items:flex-end;justify-content:center;padding:4px;text-align:center;cursor:pointer;line-height:1.15;position:relative}
+.ph.done{border-style:solid;border-color:var(--teal);background:color-mix(in srgb,var(--teal) 14%,var(--paper-dim))}
+.ph.done::before{content:"✓";position:absolute;top:5px;left:0;right:0;font-size:16px;color:var(--teal)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field input,.field textarea{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:15px var(--f-body);background:var(--card);color:var(--ink);width:100%}
+.field textarea{min-height:60px;resize:vertical}
+.fuel{display:flex;gap:3px}
+.fuel button{flex:1;height:26px;border-radius:4px;border:1px solid var(--line);background:var(--card);cursor:pointer}
+.fuel button.on{background:var(--amber);border-color:var(--amber-dark)}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 0}
+.chk input{width:18px;height:18px;accent-color:var(--teal)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px}
+
+.sheet-bg{position:absolute;inset:0;background:var(--shade);display:flex;align-items:flex-end;z-index:5}
+.sheet{background:var(--paper);width:100%;border-radius:18px 18px 0 0;padding:16px;display:flex;flex-direction:column;gap:10px;max-height:85%;overflow-y:auto}
+.sheet h3{font-family:var(--f-head);margin:0;font-size:18px}
+.msg{max-width:80%;padding:8px 11px;border-radius:12px;font-size:14px}
+.msg.in{background:var(--card);border:1px solid var(--line);align-self:flex-start}
+.msg.out{background:color-mix(in srgb,var(--amber) 25%,var(--card));align-self:flex-end}
+.toast{position:absolute;left:16px;right:16px;bottom:74px;background:var(--ink);color:var(--paper);border-radius:12px;padding:11px 14px;font-size:14px;z-index:6}
+
+.stat{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.stat div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+.stat b{display:block;font:600 18px var(--f-mono);font-variant-numeric:tabular-nums}
+.stat small{color:var(--ink-faint);font-size:11px}
+.tx{display:flex;gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.tx:last-child{border-bottom:0}
+.tx .mono{margin-left:auto;white-space:nowrap}
+.neg{color:var(--alert)}
+.seg{display:flex;flex-direction:column;gap:6px}
+.seg label{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font-size:14px}
+.seg input{margin-top:3px;accent-color:var(--amber-dark)}
+.empty{text-align:center;color:var(--ink-soft);padding:30px 10px;font-size:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="phone" id="phone">
+    <div class="top" id="top"></div>
+    <div class="screen" id="screen"></div>
+    <nav class="tabs" id="tabs"></nav>
+  </div>
+  <aside class="note">
+    <div class="k">Прототип · данные примерные</div>
+    <h1>Приложение автоконсьержа</h1>
+    <p>Отдельное мобильное приложение для водителя, который забирает машину у клиентки, везёт в СТО и возвращает.</p>
+    <p>Что попробовать:</p>
+    <ol>
+      <li>Включить смену и взять заказ из ленты.</li>
+      <li>Пройти шаги поездки и заполнить акт осмотра №1.</li>
+      <li>Открыть «Происшествие» и чат с клиенткой.</li>
+      <li>В профиле сменить тип консьержа: партнёр, штатный или сотрудник СТО. Меняются лента и раздел выплат.</li>
+    </ol>
+    <p>Состояние живёт только в памяти страницы, перезагрузка всё сбрасывает.</p>
+  </aside>
+</div>
+
+<script>
+const ICONS={
+ feed:'<path d="M4 6h16M4 12h16M4 18h10"/>',
+ trips:'<path d="M5 17h14l-1.5-6.5A2 2 0 0 0 15.6 9H8.4a2 2 0 0 0-1.9 1.5Z"/><circle cx="8" cy="17" r="2"/><circle cx="16" cy="17" r="2"/>',
+ money:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+ me:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>'
+};
+const TYPES={
+ partner:{name:'Партнёр (самозанятый)',desc:'Сам выбирает заказы из общей ленты. Выплата за каждый выезд.'},
+ staff:{name:'Штатный сотрудник платформы',desc:'Работает по сменам. Видит общую ленту, диспетчер может назначить заказ напрямую. Зарплата по договору, выезды учитываются в смене.'},
+ sto:{name:'Сотрудник СТО',desc:'Видит только заказы своей станции «Мотор-Сервис». Оплату получает от станции, платформа выплату не начисляет.'}
+};
+const ORDERS=[
+ {id:'A-2148',kind:'Полный цикл',sto:'Мотор-Сервис',stoAddr:'просп. Независимости, 45',from:'Фрунзенский р-н',fromFull:'ул. Притыцкого, 62, подъезд 3',client:'Анна К.',car:'Kia Rio 2017',plate:'7845 AB-7',gear:'АКПП',slot:'Сегодня, 10:00–12:00',km:'4,2 км до забора',trip:'9,8 км перегон',pay:16,urgent:true,own:true,mins:38,why:'Стук спереди справа при повороте'},
+ {id:'A-2151',kind:'Возврат',sto:'АвтоДом',stoAddr:'ул. Кальварийская, 17',from:'Советский р-н',fromFull:'ул. Сурганова, 24, кв. 51',client:'Ольга М.',car:'Volkswagen Polo 2019',plate:'1203 KH-7',gear:'МКПП',slot:'Сегодня, 14:00–16:00',km:'6,0 км до СТО',trip:'7,1 км перегон',pay:9,urgent:false,own:false,mins:250,why:'Плановое ТО, готово'},
+ {id:'A-2160',kind:'Техосмотр под ключ',sto:'Гостехосмотр, ул. Ваупшасова',stoAddr:'ул. Ваупшасова, 33',from:'Ленинский р-н',fromFull:'ул. Маяковского, 113',client:'Ирина Л.',car:'Renault Logan 2015',plate:'4410 IT-7',gear:'МКПП',slot:'Завтра, 08:00–10:00',km:'11,3 км до забора',trip:'5,4 км перегон',pay:20,urgent:false,own:false,mins:1400,why:'Проверка перед техосмотром включена'},
+ {id:'A-2163',kind:'Забор',sto:'Мотор-Сервис',stoAddr:'просп. Независимости, 45',from:'Центральный р-н',fromFull:'ул. Романовская Слобода, 9',client:'Мария Д.',car:'Toyota Corolla 2020',plate:'0098 MP-7',gear:'АКПП',slot:'Завтра, 12:00–14:00',km:'3,1 км до забора',trip:'4,5 км перегон',pay:9,urgent:false,own:true,mins:1560,why:'Не холодит кондиционер'}
+];
+const STEPS=[
+ {t:'Заказ принят',s:'Клиентке ушёл push с вашей карточкой'},
+ {t:'Выехал к клиентке',s:'Трансляция геопозиции включена'},
+ {t:'На месте',s:'Клиентка получила push «Консьерж прибыл»'},
+ {t:'Акт осмотра №1',s:'Приёмка машины у клиентки'},
+ {t:'В пути в СТО',s:'Клиентка видит вас на карте'},
+ {t:'Акт осмотра №2',s:'Передача машины в СТО'},
+ {t:'Машина в СТО',s:'Трансляция выключена. Возврат придёт отдельным заказом'}
+];
+const PHOTOS=['Перед','Зад','Левый бок','Правый бок','Колесо ПЛ','Колесо ПП','Колесо ЗЛ','Колесо ЗП','Салон спереди','Салон сзади','Багажник','Приборы: пробег, топливо'];
+const KIT=['Ключи','Документы','Запаска','Домкрат','Аптечка','Огнетушитель','Знак аварийной остановки'];
+
+const S={tab:'feed',view:'feed',onShift:false,filter:'all',type:'partner',active:null,step:0,open:null,
+ act:null,acts:[],sheet:null,toast:null,chat:[{in:1,t:'Здравствуйте! Ключи будут у консьержа подъезда.'}]};
+
+const $=s=>document.querySelector(s);
+const money=v=>v.toFixed(2).replace('.',',')+' Br';
+function visible(){let l=ORDERS.filter(o=>!(S.active&&S.active.id===o.id));
+ if(S.type==='sto')l=l.filter(o=>o.own);
+ if(S.filter==='near')l=l.filter(o=>parseFloat(o.km.replace(',','.'))<5);
+ if(S.filter==='today')l=l.filter(o=>o.slot.startsWith('Сегодня'));
+ if(S.filter==='akpp')l=l.filter(o=>o.gear==='АКПП');return l}
+function go(view,extra){Object.assign(S,{view},extra||{});render();$('#screen').scrollTop=0}
+function toast(t){S.toast=t;render();clearTimeout(toast.h);toast.h=setTimeout(()=>{S.toast=null;render()},2600)}
+
+function topBar(title,back){return (back?`<button class="back" aria-label="Назад" data-go="${back}">‹</button>`:'')+`<h2>${title}</h2>`}
+
+function orderCard(o,tap){
+ const hidden=!(S.active&&S.active.id===o.id);
+ return `<${tap?'button':'div'} class="card ${tap?'tap':''}" ${tap?`data-open="${o.id}"`:''}>
+  <div class="row"><span class="pill ${o.urgent?'urg':''}">${o.urgent?'Срочно · ':''}${o.kind}</span><span class="pill">${o.gear}</span><span class="sp"></span>${S.type==='partner'?`<span class="money">${money(o.pay)}</span>`:''}</div>
+  <div class="car">${o.car}</div>
+  <div class="route"><i></i><div>${hidden?o.from+' <span class="hid">· адрес после взятия</span>':o.fromFull}</div><span class="ln"></span><span></span><i class="end"></i><div>${o.sto}, ${o.stoAddr}</div></div>
+  <div class="row muted"><span class="mono">${o.slot}</span><span class="sp"></span><span>${o.km}</span></div>
+ </${tap?'button':'div'}>`}
+
+function vFeed(){
+ const l=visible();
+ let h=`<div class="shift"><div class="t"><b>${S.onShift?'На смене':'Не на смене'}</b><small>${S.onShift?'Новые заказы приходят push-уведомлением':'Включите, чтобы видеть ленту и брать заказы'}</small></div><button class="sw ${S.onShift?'on':''}" id="shiftSw" aria-label="Смена"></button></div>`;
+ if(S.active)h+=`<button class="card tap" data-go="trip" style="border-color:var(--amber)"><div class="row"><span class="pill am">Активный заказ</span><span class="sp"></span><span class="mono">${S.active.id}</span></div><div class="car">${S.active.car}</div><div class="muted">${STEPS[S.step].t} · ${STEPS[S.step].s}</div></button>`;
+ if(!S.onShift)return h+`<div class="empty">Лента появится после начала смены.<br>Геопозиция передаётся только во время заказа.</div>`;
+ h+=`<div class="chips">${[['all','Все'],['near','Рядом'],['today','Сегодня'],['akpp','Только АКПП']].map(([k,t])=>`<button class="chip ${S.filter===k?'on':''}" data-f="${k}">${t}</button>`).join('')}</div>`;
+ if(S.type==='sto')h+=`<div class="muted">Показаны заказы станции «Мотор-Сервис»</div>`;
+ h+=l.length?l.map(o=>orderCard(o,true)).join(''):`<div class="empty">Подходящих заказов нет. Мы пришлём push, когда появится новый.</div>`;
+ return h}
+
+function vOrder(){const o=ORDERS.find(x=>x.id===S.open);
+ return `${orderCard(o,false)}
+ <div class="card"><div class="lbl">Что с машиной</div><div>${o.why}</div>
+ <div class="lbl">Маршрут</div><div class="muted">${o.km} · ${o.trip}</div>
+ <div class="lbl">Клиентка</div><div class="hid">Имя, телефон и точный адрес откроются после взятия заказа</div></div>
+ ${S.type==='partner'?`<div class="card"><div class="row"><span class="lbl">Выплата за выезд</span><span class="sp"></span><span class="money">${money(o.pay)}</span></div><div class="muted">Опоздание к слоту больше 20 минут — штраф 50% от стоимости выезда.</div></div>`:`<div class="card"><div class="muted">Опоздание к слоту больше 20 минут фиксируется в карточке консьержа.</div></div>`}
+ ${S.active?`<div class="muted">Сначала завершите текущий заказ ${S.active.id}.</div>`:''}
+ <button class="btn pri" id="take" ${S.active?'disabled':''}>Взять заказ</button>
+ <button class="btn sec" data-go="feed">Пропустить</button>`}
+
+function mapSvg(){const p=[[40,120],[110,95],[160,100],[230,60],[300,40]];const k=Math.min(S.step,6);const pos=k<4?p[0]:k<6?p[2]:p[4];
+ return `<div class="map"><svg viewBox="0 0 340 150" preserveAspectRatio="none"><polyline points="${p.map(a=>a.join(',')).join(' ')}" fill="none" stroke="var(--amber-dark)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${k>=4?'0':'8 6'}"/><circle cx="40" cy="120" r="7" fill="var(--card)" stroke="var(--ink)" stroke-width="3"/><circle cx="300" cy="40" r="8" fill="var(--amber)" stroke="var(--ink)" stroke-width="2"/><circle cx="${pos[0]}" cy="${pos[1]}" r="9" fill="var(--teal)" stroke="var(--card)" stroke-width="3"/></svg><span class="att">© OpenMapTiles © OSM · Geoapify</span></div>`}
+
+function vTrip(){const o=S.active;if(!o)return `<div class="empty">Нет активного заказа</div>`;
+ const late=S.step<2;
+ let action='';
+ if(S.step===0)action=`<button class="btn pri" data-adv>Выехал к клиентке</button>`;
+ else if(S.step===1)action=`<div class="btns"><button class="btn sec" id="nav">Навигатор</button><button class="btn pri" data-adv>Я на месте</button></div>`;
+ else if(S.step===2)action=`<button class="btn pri" data-act="1">Начать акт осмотра №1</button>`;
+ else if(S.step===3)action=`<button class="btn pri" data-act="1">Продолжить акт №1</button>`;
+ else if(S.step===4)action=`<div class="btns"><button class="btn sec" id="nav">Навигатор</button><button class="btn pri" data-adv>Приехал в СТО</button></div>`;
+ else if(S.step===5)action=`<button class="btn pri" data-act="2">Акт №2: передать в СТО</button>`;
+ else action=`<button class="btn pri" id="finish">Закрыть заказ</button>`;
+ return `${late?`<div class="timer"><span class="mono">${o.mins} мин</span><span>до начала слота ${o.slot.split(', ')[1]}.<br>Выезжайте не позже чем за 30 минут.</span></div>`:''}
+ ${mapSvg()}
+ <div class="card"><div class="row"><span class="car">${o.car}</span><span class="sp"></span><span class="pill mono">${o.plate}</span></div>
+  <div class="route"><i></i><div>${o.fromFull}</div><span class="ln"></span><span></span><i class="end"></i><div>${o.sto}, ${o.stoAddr}</div></div>
+  <div class="row"><span>${o.client}</span><span class="sp"></span><button class="chip" id="chat">Чат</button><button class="chip" id="call">Позвонить</button></div></div>
+ <div class="card"><div class="steps">${STEPS.map((s,i)=>`<div class="st ${i<S.step?'done':i===S.step?'cur':''}"><span class="d"></span><div><b>${s.t}</b><br><span>${s.s}</span></div></div>`).join('')}</div></div>
+ ${action}
+ <button class="btn dan" id="sos">Происшествие</button>`}
+
+function vAct(){const a=S.act,n=a.n,done=a.photos.filter(Boolean).length;
+ const ready=done===12&&a.km;
+ return `<div class="muted">${n===1?'Приёмка у клиентки':'Передача в СТО «'+S.active.sto+'»'}. Съёмка только камерой, время и геопозиция ставятся автоматически. Без сети акт сохранится и уйдёт позже.</div>
+ <div class="row"><span class="lbl">Фото</span><span class="sp"></span><span class="mono">${done} / 12</span><button class="chip" id="allph">Снять все (демо)</button></div>
+ <div class="photos">${PHOTOS.map((p,i)=>`<button class="ph ${a.photos[i]?'done':''}" data-ph="${i}">${p}</button>`).join('')}</div>
+ <div class="field"><label class="lbl" for="km">Пробег, км</label><input id="km" inputmode="numeric" placeholder="например 128 430" value="${a.km}"></div>
+ <div class="field"><span class="lbl">Топливо</span><div class="fuel">${[1,2,3,4,5,6,7,8].map(i=>`<button aria-label="${i}/8" class="${i<=a.fuel?'on':''}" data-fuel="${i}"></button>`).join('')}</div><span class="muted mono">${a.fuel}/8 бака</span></div>
+ <div class="field"><span class="lbl">Комплектность</span><div class="grid2">${KIT.map((k,i)=>`<label class="chk"><input type="checkbox" id="kit${i}" data-kit="${i}" ${a.kit[i]?'checked':''}>${k}</label>`).join('')}</div></div>
+ <div class="field"><span class="lbl">Повреждения</span>${a.dmg.map(d=>`<div class="row"><span class="pill urg">${d}</span></div>`).join('')}<button class="btn sec" id="dmg">+ Отметить на схеме кузова</button></div>
+ <div class="field"><label class="lbl" for="things">Личные вещи в салоне и багажнике</label><textarea id="things" placeholder="Детское кресло, пакет в багажнике">${a.things}</textarea></div>
+ <button class="btn pri" id="sendAct" ${ready?'':'disabled'}>${n===1?'Отправить клиентке на подтверждение':'Подписать с мастером СТО'}</button>
+ ${ready?'':'<div class="muted">Нужны все 12 фото и пробег.</div>'}`}
+
+function vTrips(){let h='';
+ if(S.active)h+=`<div class="lbl">Сейчас</div>`+`<button class="card tap" data-go="trip"><div class="row"><span class="pill am">${STEPS[S.step].t}</span><span class="sp"></span><span class="mono">${S.active.id}</span></div><div class="car">${S.active.car}</div></button>`;
+ h+=`<div class="lbl">Акты осмотра</div>`+(S.acts.length?S.acts.map(a=>`<div class="card"><div class="row"><b>Акт №${a.n} · ${a.id}</b><span class="sp"></span><span class="pill ${a.n===1?'am':'ok'}">${a.n===1?'Ждёт клиентку · 24 ч':'Подписан'}</span></div><div class="muted mono">Пробег ${a.km} км · топливо ${a.fuel}/8 · фото 12</div></div>`).join(''):`<div class="muted">Пока нет актов</div>`);
+ h+=`<div class="lbl">Завершённые</div>
+ <div class="card"><div class="row"><b>Skoda Rapid · возврат</b><span class="sp"></span><span class="pill ok">4,9 ★</span></div><div class="muted mono">10.10 · СТО «АвтоДом» → Московский р-н</div></div>
+ <div class="card"><div class="row"><b>Hyundai Solaris · полный цикл</b><span class="sp"></span><span class="pill ok">5,0 ★</span></div><div class="muted mono">09.10 · Партизанский р-н → «Мотор-Сервис»</div></div>`;
+ return h}
+
+function vMoney(){
+ if(S.type==='sto')return `<div class="card"><b>Оплату выездов начисляет ваша станция</b><div class="muted">Платформа учитывает ваши поездки и рейтинг, но не делает выплат сотрудникам СТО.</div></div><div class="stat"><div><b>6</b><small>выездов за неделю</small></div><div><b>4,9</b><small>рейтинг</small></div><div><b>0</b><small>опозданий</small></div></div>`;
+ if(S.type==='staff')return `<div class="card"><b>Смена 08:00–20:00</b><div class="muted">Зарплата по трудовому договору. Здесь видно, что засчитано в смену.</div></div><div class="stat"><div><b>11</b><small>выездов за неделю</small></div><div><b>4,8</b><small>рейтинг</small></div><div><b>1</b><small>опоздание</small></div></div><div class="card"><div class="tx"><span>12.10 · опоздание 24 мин</span><span class="mono neg">в карточке</span></div><div class="tx"><span>11.10 · 3 выезда</span><span class="mono">в смене</span></div></div>`;
+ return `<div class="stat"><div><b>${money(119)}</b><small>за неделю</small></div><div><b>4,9</b><small>рейтинг</small></div><div><b>1</b><small>штраф</small></div></div>
+ <div class="card"><div class="row"><span class="lbl">К выплате в пятницу</span><span class="sp"></span><span class="money">${money(111)}</span></div><div class="muted">На карту, указанную в профиле. Для самозанятого чек формируется автоматически.</div></div>
+ <div class="card">
+  <div class="tx"><span>12.10 · Kia Rio, полный цикл</span><span class="mono">+${money(16)}</span></div>
+  <div class="tx"><span>11.10 · опоздание 24 мин, штраф 50%</span><span class="mono neg">−${money(8)}</span></div>
+  <div class="tx"><span>11.10 · Skoda Rapid, возврат</span><span class="mono">+${money(9)}</span></div>
+  <div class="tx"><span>10.10 · Hyundai Solaris, полный цикл</span><span class="mono">+${money(16)}</span></div>
+  <div class="tx"><span>10.10 · штраф снят диспетчером (ДТП на МКАД)</span><span class="mono">±0,00 Br</span></div>
+ </div>
+ <button class="btn sec" id="dispute">Оспорить штраф</button>`}
+
+function vMe(){return `<div class="card"><div class="row"><span class="car">Дмитрий Ковалёв</span><span class="sp"></span><span class="pill ok">Проверен</span></div><div class="muted">Стаж вождения 9 лет · рейтинг 4,9 · 214 поездок</div></div>
+ <div class="lbl">Тип консьержа (для демо)</div>
+ <div class="seg">${Object.entries(TYPES).map(([k,v])=>`<label><input type="radio" name="type" id="type-${k}" value="${k}" ${S.type===k?'checked':''}><span><b>${v.name}</b><br><span class="muted">${v.desc}</span></span></label>`).join('')}</div>
+ <div class="lbl">Умею водить</div><div class="chips"><span class="chip on">АКПП</span><span class="chip on">МКПП</span><span class="chip">Электромобиль</span></div>
+ <div class="lbl">Документы</div>
+ <div class="card"><div class="tx"><span>Паспорт</span><span class="mono" style="color:var(--teal)">проверен</span></div><div class="tx"><span>Водительское удостоверение, кат. B</span><span class="mono" style="color:var(--teal)">до 2031</span></div><div class="tx"><span>Страховка консьержа</span><span class="mono" style="color:var(--teal)">действует</span></div><div class="tx"><span>Статус самозанятого</span><span class="mono">${S.type==='partner'?'подтверждён':'не нужен'}</span></div></div>
+ <button class="btn sec" id="support">Написать диспетчеру</button>`}
+
+function sheets(){if(!S.sheet)return '';let h='';
+ if(S.sheet==='sos')h=`<h3>Что случилось?</h3><div class="muted">Диспетчер получит вызов с вашей геопозицией и заказом. Ответ в течение 2 минут.</div>
+  ${['ДТП с машиной клиентки','Машина не заводится или сломалась в пути','Клиентки нет на месте','Отказываюсь принимать машину (не совпадает с заказом)','Другое'].map(t=>`<button class="btn sec" data-sos="${t}">${t}</button>`).join('')}<button class="btn" data-close style="background:none">Отмена</button>`;
+ if(S.sheet==='chat')h=`<h3>Чат с ${S.active.client}</h3><div class="muted">Номер телефона скрыт, звонок идёт через приложение.</div><div style="display:flex;flex-direction:column;gap:6px">${S.chat.map(m=>`<div class="msg ${m.in?'in':'out'}">${m.t}</div>`).join('')}</div>
+  <div class="chips">${['Выехал, буду через 15 минут','Я на месте','Не могу найти машину'].map(t=>`<button class="chip" data-say="${t}">${t}</button>`).join('')}</div><button class="btn sec" data-close>Закрыть</button>`;
+ if(S.sheet==='nav')h=`<h3>Открыть в навигаторе</h3><div class="muted">Выбор запомнится. Навигация идёт во внешнем приложении.</div>${['Яндекс Карты','Google Maps','Organic Maps'].map(t=>`<button class="btn sec" data-close-t="Открываем ${t}">${t}</button>`).join('')}`;
+ if(S.sheet==='dmg')h=`<h3>Повреждение</h3><div class="muted">Отметьте место на схеме кузова и снимите крупно.</div>${['Царапина, передний бампер','Скол, лобовое стекло','Вмятина, левая задняя дверь'].map(t=>`<button class="btn sec" data-dmg="${t}">${t}</button>`).join('')}<button class="btn" data-close style="background:none">Отмена</button>`;
+ return `<div class="sheet-bg" data-bg><div class="sheet" role="dialog">${h}</div></div>`}
+
+function render(){
+ const titles={feed:'Лента заказов',order:'Заказ '+(S.open||''),trip:'Заказ '+(S.active?S.active.id:''),act:'Акт осмотра №'+(S.act?S.act.n:''),trips:'Мои заказы',money:S.type==='partner'?'Заработок':'Выезды',me:'Профиль'};
+ const back={order:'feed',act:'trip',trip:S.tab==='trips'?'trips':'feed'}[S.view];
+ $('#top').innerHTML=topBar(titles[S.view],back);
+ $('#screen').innerHTML={feed:vFeed,order:vOrder,trip:vTrip,act:vAct,trips:vTrips,money:vMoney,me:vMe}[S.view]();
+ $('#tabs').innerHTML=[['feed','Лента'],['trips','Мои заказы'],['money',S.type==='partner'?'Заработок':'Выезды'],['me','Профиль']].map(([k,t])=>`<button class="${S.tab===k?'on':''}" data-tab="${k}"><span class="badge-dot" ${k==='trips'&&S.active?'data-n="1"':''}><svg viewBox="0 0 24 24">${ICONS[{feed:'feed',trips:'trips',money:'money',me:'me'}[k]]}</svg></span>${t}</button>`).join('');
+ document.querySelectorAll('.sheet-bg,.toast').forEach(e=>e.remove());
+ $('#phone').insertAdjacentHTML('beforeend',sheets()+(S.toast?`<div class="toast" role="status">${S.toast}</div>`:''));
+}
+
+document.addEventListener('click',e=>{const t=e.target.closest('button,[data-bg],input');if(!t)return;const d=t.dataset;
+ if(d.bg!==undefined&&e.target===t){S.sheet=null;return render()}
+ if(d.tab){S.tab=d.tab;return go(d.tab)}
+ if(d.go)return go(d.go);
+ if(d.open)return go('order',{open:d.open});
+ if(d.f){S.filter=d.f;return render()}
+ if(t.id==='shiftSw'){S.onShift=!S.onShift;return toast(S.onShift?'Смена началась. Вы в ленте.':'Смена закончена')}
+ if(t.id==='take'){S.active=ORDERS.find(o=>o.id===S.open);S.step=0;S.tab='trips';go('trip');return toast('Заказ ваш. Клиентка видит вашу карточку.')}
+ if(d.adv!==undefined){S.step++;return render()}
+ if(d.act){const n=+d.act;S.act={n,photos:Array(12).fill(false),km:'',fuel:n===1?5:4,kit:KIT.map((_,i)=>i<2),dmg:[],things:''};if(n===1)S.step=3;return go('act')}
+ if(d.ph){S.act.photos[+d.ph]=!S.act.photos[+d.ph];return render()}
+ if(t.id==='allph'){S.act.photos.fill(true);return render()}
+ if(d.fuel){S.act.fuel=+d.fuel;return render()}
+ if(d.kit){S.act.kit[+d.kit]=t.checked;return}
+ if(t.id==='dmg'){S.sheet='dmg';return render()}
+ if(d.dmg){S.act.dmg.push(d.dmg);S.sheet=null;return render()}
+ if(t.id==='sendAct'){S.acts.unshift({n:S.act.n,id:S.active.id,km:S.act.km,fuel:S.act.fuel});const n=S.act.n;S.step=n===1?4:6;S.act=null;go('trip');return toast(n===1?'Акт отправлен клиентке. Можно ехать.':'Машина передана в СТО. Трансляция выключена.')}
+ if(t.id==='finish'){S.active=null;S.step=0;S.tab='money';go('money');return toast('Заказ закрыт. Выплата начислена.')}
+ if(t.id==='sos'){S.sheet='sos';return render()}
+ if(d.sos){S.sheet=null;return toast('Вызов передан диспетчеру: «'+d.sos+'»')}
+ if(t.id==='chat'){S.sheet='chat';return render()}
+ if(d.say){S.chat.push({t:d.say});return render()}
+ if(t.id==='call')return toast('Звонок через приложение, номер скрыт');
+ if(t.id==='nav'){S.sheet='nav';return render()}
+ if(d.closeT){S.sheet=null;return toast(d.closeT)}
+ if(d.close!==undefined){S.sheet=null;return render()}
+ if(t.id==='dispute')return toast('Диспетчер получил запрос. Ответ в течение 15 минут.');
+ if(t.id==='support')return toast('Открыт чат с диспетчером');
+ if(t.name==='type'){S.type=t.value;S.filter='all';return render()}
+});
+document.addEventListener('input',e=>{if(!S.act)return;if(e.target.id==='km'){S.act.km=e.target.value;const b=$('#sendAct');const ok=S.act.photos.every(Boolean)&&S.act.km;b.disabled=!ok}if(e.target.id==='things')S.act.things=e.target.value});
+render();
+</script>
+</body>
+</html>
