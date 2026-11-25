@@ -1,0 +1,12 @@
+{
+  "appId": "by.moyavtomekhanik.concierge",
+  "appName": "МА Консьерж",
+  "webDir": "www",
+  "server": { "androidScheme": "http", "cleartext": true },
+  "android": { "allowMixedContent": true },
+  "ios": { "contentInset": "never", "scheme": "MA Concierge" },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 600, "backgroundColor": "#1B2430", "showSpinner": false },
+    "LocalNotifications": { "iconColor": "#3F7D6B" }
+  }
+}

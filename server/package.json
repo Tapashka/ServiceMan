@@ -1,0 +1,17 @@
+{
+  "name": "moy-avtomekhanik-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Сервер экосистемы «Мой автомеханик»: синхронизация клиентского приложения, панели СТО, приложения консьержа и панели диспетчера",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node --no-warnings=ExperimentalWarning src/index.js",
+    "dev": "node --no-warnings=ExperimentalWarning --watch src/index.js",
+    "test": "node --no-warnings=ExperimentalWarning --test test/*.test.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

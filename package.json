@@ -1,0 +1,13 @@
+{
+  "name": "moy-avtomekhanik",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Экосистема «Мой автомеханик»: клиентское приложение, приложение консьержа, панель СТО и панель диспетчера на общем сервере",
+  "scripts": {
+    "postinstall": "cd server && npm install && cd ../mobile && npm install",
+    "start": "cd server && npm start",
+    "dev": "cd server && npm run dev",
+    "test": "cd server && npm test",
+    "mobile:sync": "cd mobile && npm run sync"
+  }
+}

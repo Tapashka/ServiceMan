@@ -1005,10 +1005,12 @@ function actsSidePanel(r){
 }
 
 updateStoBell();
-setTimeout(simulateIncoming, 8000);
+/* новые заявки приходят с сервера экосистемы */
 
 renderMarket();
 updateCounts();
 </script>
+<script src="../shared/ma-sdk.js"></script>
+<script src="sto-sync.js"></script>
 </body>
 </html>

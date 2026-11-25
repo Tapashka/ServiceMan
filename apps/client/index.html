@@ -2,8 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Мой автомеханик v1.9</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F6F4EF">
+<title>Мой автомеханик</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
@@ -940,6 +941,18 @@
   .hc-demo{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:-4px 0 10px; }
   .hc-demo span{ font-size:10.5px; color:var(--ink-faint); }
   .hc-demo .chip{ padding:4px 9px; font-size:10.5px; }
+  /* v2.0 — полноэкранный режим: телефон (Capacitor), встраивание в страницу экосистемы, узкий экран */
+  body.full{ padding:0; display:block; background:var(--paper); min-height:0; }
+  body.full .phone{ width:100%; height:100vh; height:100dvh; border:0; border-radius:0; box-shadow:none; }
+  body.full .notch, body.full .statusbar{ display:none; }
+  body.full .screens{ margin-top:env(safe-area-inset-top); }
+  body.full .bottomnav{ padding-bottom:calc(env(safe-area-inset-bottom) + 8px); }
+  @media (max-width:500px){
+    body{ padding:0; display:block; background:var(--paper); }
+    .phone{ width:100%; height:100vh; height:100dvh; border:0; border-radius:0; box-shadow:none; }
+    .notch, .statusbar{ display:none; }
+    .screens{ margin-top:env(safe-area-inset-top); }
+  }
 </style>
 </head>
 <body>
@@ -3830,6 +3843,8 @@ submitRating = function(){
 };
 renderHomeChat();
 </script>
+<script src="../shared/ma-sdk.js"></script>
+<script src="client-sync.js"></script>
 
 </body>
 </html>

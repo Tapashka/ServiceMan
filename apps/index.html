@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Экосистема «Мой автомеханик»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+:root{
+  --ink:#1B2430;--ink-soft:#4D5769;--ink-faint:#8891A0;--paper:#F6F4EF;--paper-dim:#ECE8DE;--card:#FFFFFF;
+  --amber:#E8A33D;--amber-dark:#C77F1D;--copper:#B5602C;--teal:#3F7D6B;--alert:#C1503F;--line:#DEDACE;
+  --f-head:"Space Grotesk",system-ui,sans-serif;--f-body:"Inter",system-ui,sans-serif;--f-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#ECE8DE;--ink-soft:#B9B6AD;--ink-faint:#878D97;--paper:#14191F;--paper-dim:#1E252D;--card:#1A2028;--amber-dark:#F0B65E;--copper:#D9895A;--teal:#5FA58F;--alert:#E07463;--line:#2D353F}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper-dim);color:var(--ink);font:14px/1.45 var(--f-body)}
+header{display:flex;align-items:center;gap:14px;padding:14px 20px;background:#1B2430;color:#ECE8DE;flex-wrap:wrap}
+header .mark{width:34px;height:34px;border-radius:9px;background:#E8A33D;display:grid;place-items:center;flex:none}
+header h1{font:600 19px var(--f-head);margin:0}
+header small{display:block;color:#8891A0;font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
+header .sp{flex:1}
+.hbtn{border:1px solid #3A4453;background:transparent;color:#ECE8DE;border-radius:10px;padding:8px 12px;font:500 13px var(--f-body);cursor:pointer;text-decoration:none}
+.hbtn:hover{border-color:#E8A33D}
+.status{font:500 12px var(--f-mono);display:flex;gap:6px;align-items:center;color:#B9B6AD}
+.status i{width:8px;height:8px;border-radius:50%;background:#E07463}.status.ok i{background:#5FA58F}
+main{padding:16px 20px 28px;display:grid;gap:16px;grid-template-columns:400px 400px minmax(280px,1fr)}
+.pane{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.pane .ph{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.pane .ph b{font:600 14px var(--f-head)}
+.pane .ph span{color:var(--ink-faint);font-size:12px}
+.pane .ph a{margin-left:auto;color:var(--copper);font-size:12px;text-decoration:none;white-space:nowrap}
+.pane iframe{border:0;width:100%;flex:none;display:block;background:var(--paper)}
+.phone iframe{height:780px}
+.wide{grid-column:span 3}
+.wide iframe{height:760px}
+.row2{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tag{font:600 10px var(--f-mono);letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;border-radius:6px;background:var(--paper-dim);color:var(--ink-soft)}
+.tag.m{background:color-mix(in srgb,var(--amber) 22%,transparent);color:var(--amber-dark)}
+.feed{flex:1;overflow-y:auto;max-height:780px;padding:6px 14px 14px}
+.ev{display:grid;grid-template-columns:52px 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.ev:last-child{border-bottom:0}
+.ev time{font:500 11px var(--f-mono);color:var(--ink-faint);padding-top:2px}
+.ev .who{font:600 10.5px var(--f-mono);text-transform:uppercase;letter-spacing:.05em}
+.who.client{color:var(--copper)}.who.sto{color:var(--teal)}.who.concierge{color:var(--amber-dark)}.who.dispatcher,.who.director{color:var(--alert)}.who.system{color:var(--ink-faint)}
+.guide{padding:12px 14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-soft)}
+.guide ol{margin:6px 0 0;padding-left:18px}.guide li{margin-bottom:3px}
+@media (max-width:1300px){main{grid-template-columns:1fr 1fr}.log{grid-column:1/-1}.wide{grid-column:1/-1}.row2{grid-template-columns:1fr}}
+@media (max-width:860px){main{grid-template-columns:1fr;padding:12px 16px}.phone iframe{height:720px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2430" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-6h14l2 6"/><rect x="3" y="13" width="18" height="6" rx="2"/><circle cx="7.5" cy="19" r="1.2"/><circle cx="16.5" cy="19" r="1.2"/></svg></div>
+  <div><small>Экосистема · все приложения синхронно</small><h1>Мой автомеханик</h1></div>
+  <div class="sp"></div>
+  <span class="status" id="st"><i></i><span>сервер…</span></span>
+  <button class="hbtn" id="reset">Сбросить демо</button>
+</header>
+<main>
+  <section class="pane phone">
+    <div class="ph"><b>Клиентка</b><span class="tag m">Android · iOS</span><a href="client/" target="_blank" rel="noopener">отдельно ↗</a></div>
+    <iframe src="client/?embed=1" title="Мой автомеханик — клиентское приложение"></iframe>
+  </section>
+  <section class="pane phone">
+    <div class="ph"><b>Консьерж</b><span class="tag m">Android · iOS</span><a href="concierge/" target="_blank" rel="noopener">отдельно ↗</a></div>
+    <iframe src="concierge/?embed=1" title="Приложение автоконсьержа"></iframe>
+  </section>
+  <section class="pane log">
+    <div class="ph"><b>Лента событий</b><span>все действия всех участников</span></div>
+    <div class="feed" id="feed"><div class="ev"><time></time><div>Ждём первые действия…</div></div></div>
+    <div class="guide"><b>Сквозной сценарий</b>
+      <ol>
+        <li>Клиентка: «Рассказать, что случилось» → опубликовать заявку.</li>
+        <li>СТО: «Предложить цену». Боты-станции тоже ответят.</li>
+        <li>Клиентка выбирает СТО и подтверждает с консьержем.</li>
+        <li>Консьерж: включить смену, взять заказ, пройти шаги и акты.</li>
+        <li>СТО: принять акт №2, диагностика, смета → клиентка одобряет.</li>
+        <li>Ремонт готов → консьерж берёт возврат, СТО подписывает акт №3.</li>
+        <li>Акт №4 → клиентка платит и ставит оценку. Споры и SOS видит диспетчер.</li>
+      </ol></div>
+  </section>
+  <div class="row2">
+    <section class="pane">
+      <div class="ph"><b>Панель СТО</b><span class="tag">веб</span><span>Автосервис на Независимости</span><a href="sto/" target="_blank" rel="noopener">отдельно ↗</a></div>
+      <iframe src="sto/" title="Панель СТО" style="height:760px"></iframe>
+    </section>
+    <section class="pane">
+      <div class="ph"><b>Панель диспетчера</b><span class="tag">веб</span><span>SOS, споры, консьержи</span><a href="dispatcher/" target="_blank" rel="noopener">отдельно ↗</a></div>
+      <iframe src="dispatcher/" title="Панель диспетчера" style="height:760px"></iframe>
+    </section>
+  </div>
+</main>
+<script>
+const WHO = {client:'Клиентка', sto:'СТО', concierge:'Консьерж', dispatcher:'Диспетчер', director:'Директор', system:'Бот'};
+const T = {
+  'order.create':'опубликовала заявку','order.cancel':'отменила заявку','order.confirm':'выбрала СТО и подтвердила заказ','estimate.approve':'одобрила смету','estimate.decline':'не согласовала смету',
+  'act.accept':'подтвердил(а) акт','order.pay':'оплатила заказ','order.rate':'поставила оценку','car.add':'добавила машину','client.update':'обновила профиль',
+  'chat.send':'написал(а) в чат','offer.send':'отправила предложение','offer.withdraw':'отозвала предложение','sto.intakeSelf':'приняла машину','sto.diagnosis':'обновила диагностику',
+  'sto.stage':'перевела заказ на стадию','estimate.send':'отправила смету','sto.selfHandover':'выдала машину','act.create':'составил(а) акт','concierge.shift':'сменил статус смены',
+  'concierge.type':'сменил тип','job.take':'взял заказ','concierge.assign':'назначил консьержа','concierge.reassign':'переназначил консьержа','trip.step':'следующий шаг поездки',
+  'fine.dispute':'оспорил штраф','sos.create':'отправил(а) SOS','sos.cancel':'отменила SOS','sos.step':'обработал SOS','dispute.open':'открыл(а) спор','dispute.take':'взял спор в работу',
+  'dispute.request':'запросил информацию','dispute.chat':'написал сторонам спора','dispute.propose':'предложил решение','dispute.approve':'утвердил возврат','dispute.reject':'вернул спор на доработку',
+  'fine.remove':'снял штраф','order.nudge':'написал сторонам зависшего заказа','handover.note':'оставил комментарий смене','handover.submit':'передал смену','demo.reset':'сбросил демо','notif.read':null,'concierge.loc':null
+};
+const STAGES = ['Принято','Диагностика','Смета','Ремонт','Готово'];
+function detail(e){
+  let p={}; try{p=JSON.parse(e.payload||'{}')}catch(x){}
+  const bits=[];
+  if(p.orderId) bits.push('№'+p.orderId);
+  if(e.type==='offer.send') bits.push(p.price+' Br');
+  if(e.type==='sto.stage') bits.push('«'+STAGES[p.to]+'»');
+  if(e.type==='act.create'||e.type==='act.accept') bits.push('№'+p.n);
+  if(e.type==='chat.send') bits.push('«'+String(p.text||'').slice(0,50)+'»');
+  if(e.type==='sos.create') bits.push(p.scenario||'');
+  if(e.type==='concierge.shift') bits.push(p.on?'на смене':'не на смене');
+  if(p.id && /dispute|sos/.test(e.type)) bits.push(p.id);
+  return bits.join(' · ');
+}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let last='';
+async function poll(){
+  try{
+    const r = await fetch('api/events?limit=60'); const list = await r.json();
+    document.getElementById('st').className='status ok'; document.getElementById('st').lastElementChild.textContent='сервер онлайн';
+    const rows = list.filter(e=>T[e.type]!==null).slice(0,40);
+    const sig = rows.length ? rows[0].id : '';
+    if(sig===last) return; last=sig;
+    document.getElementById('feed').innerHTML = rows.length ? rows.map(e=>{const d=new Date(e.ts);return `<div class="ev"><time>${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}</time><div><div class="who ${e.role}">${WHO[e.role]||e.role}${e.role==='system'?'':' · '+esc(e.actor)}</div>${esc(T[e.type]||e.type)} ${esc(detail(e))}</div></div>`}).join('') : '<div class="ev"><time></time><div>Пока тихо — начните сценарий в любом приложении.</div></div>';
+  }catch(x){ document.getElementById('st').className='status'; document.getElementById('st').lastElementChild.textContent='нет связи с сервером'; }
+}
+setInterval(poll, 1500); poll();
+document.getElementById('reset').onclick = async ()=>{
+  if(!confirm('Сбросить все заказы, споры и SOS к стартовым данным?')) return;
+  await fetch('api/reset',{method:'POST'});
+  try{ ['ma.k.dismissed'].forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  document.querySelectorAll('iframe').forEach(f=>f.contentWindow.location.reload());
+};
+</script>
+</body>
+</html>

@@ -962,16 +962,12 @@ setInterval(()=>{
   }
 }, 1000);
 
-setTimeout(()=>{
-  sosCalls.unshift({id:'S-119', client:'Ксения Б.', phone:'+375 33 640-18-02', car:'Volkswagen Golf, 2016 · 4521 ММ-7', scenario:'ДТП', place:'пр-т Дзержинского, 104 · точность 9 м', plan:'Максимальный', ago:-Math.floor((Date.now()-T0)/1000), step:0, log:[]});
-  beep();
-  showToast('Новый SOS · ДТП · пр-т Дзержинского, 104');
-  render();
-}, 10000);
-
+/* демо-события (новые SOS, заявки) теперь приходят с сервера экосистемы */
 renderShift();
 showView('overview');
 </script>
+<script src="../shared/ma-sdk.js"></script>
+<script src="dispatcher-sync.js"></script>
 
 </body>
 </html>
