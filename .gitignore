@@ -1,0 +1,7 @@
+node_modules/
+server/data/
+mobile/*/www/
+mobile/*/ios/App/build/
+mobile/*/ios/App/build-device/
+.DS_Store
+*.log

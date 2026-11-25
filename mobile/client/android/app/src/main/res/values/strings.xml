@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Мой автомеханик</string>
+    <string name="title_activity_main">Мой автомеханик</string>
+    <string name="package_name">by.moyavtomekhanik.app</string>
+    <string name="custom_url_scheme">by.moyavtomekhanik.app</string>
+</resources>

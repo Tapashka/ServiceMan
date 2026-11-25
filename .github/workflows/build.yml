@@ -1,0 +1,98 @@
+name: Сборка экосистемы
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: 'Адрес сервера экосистемы, зашиваемый в мобильные приложения (например https://api.example.by)'
+        required: false
+
+env:
+  # Можно задать в Settings → Variables → MA_SERVER_URL. Без него приложения смотрят на эмулятор/симулятор (10.0.2.2 / localhost).
+  MA_SERVER_URL: ${{ github.event.inputs.server_url || vars.MA_SERVER_URL }}
+
+jobs:
+  server:
+    name: Сервер · тесты
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+        working-directory: server
+      - run: npm test
+        working-directory: server
+
+  android:
+    name: Android · ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1   # Maven Central отвечает 429 на параллельные загрузки — собираем по очереди, второй берёт кэш
+      matrix:
+        app: [client, concierge]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - uses: gradle/actions/setup-gradle@v4   # кэш зависимостей Gradle между запусками
+      - run: npm ci
+        working-directory: mobile
+      - name: Веб-часть и синхронизация Capacitor
+        working-directory: mobile
+        run: node scripts/build-www.mjs ${{ matrix.app }} && cd ${{ matrix.app }} && npx cap sync android
+      - name: Сборка APK (debug)
+        working-directory: mobile/${{ matrix.app }}/android
+        run: |
+          chmod +x gradlew
+          # загрузка зависимостей с повтором: репозитории иногда отвечают 429 Too Many Requests
+          for i in 1 2 3; do ./gradlew dependencies --no-daemon -q > /dev/null && break; echo "повтор через $((i*30)) с"; sleep $((i*30)); done
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ matrix.app }}-debug-apk
+          path: mobile/${{ matrix.app }}/android/app/build/outputs/apk/debug/*.apk
+
+  ios:
+    name: iOS · ${{ matrix.app }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [client, concierge]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - run: npm ci
+        working-directory: mobile
+      - name: Веб-часть и синхронизация Capacitor
+        working-directory: mobile
+        run: node scripts/build-www.mjs ${{ matrix.app }} && cd ${{ matrix.app }} && npx cap sync ios
+      - name: Сборка для симулятора
+        working-directory: mobile/${{ matrix.app }}/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+          cd build/Build/Products/Debug-iphonesimulator && zip -qr "$GITHUB_WORKSPACE/${{ matrix.app }}-simulator.zip" App.app
+      - name: Сборка для устройства без подписи (.ipa для последующей подписи)
+        working-directory: mobile/${{ matrix.app }}/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build-device CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+          mkdir -p Payload && cp -R build-device/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr "$GITHUB_WORKSPACE/${{ matrix.app }}-unsigned.ipa" Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-${{ matrix.app }}
+          path: |
+            ${{ matrix.app }}-simulator.zip
+            ${{ matrix.app }}-unsigned.ipa

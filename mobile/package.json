@@ -1,0 +1,28 @@
+{
+  "name": "moy-avtomekhanik-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Мобильные приложения экосистемы «Мой автомеханик» (Capacitor): клиентское приложение и приложение автоконсьержа для Android и iOS",
+  "type": "module",
+  "scripts": {
+    "build:www": "node scripts/build-www.mjs",
+    "sync": "node scripts/build-www.mjs && cd client && npx cap sync && cd ../concierge && npx cap sync",
+    "sync:client": "node scripts/build-www.mjs client && cd client && npx cap sync",
+    "sync:concierge": "node scripts/build-www.mjs concierge && cd concierge && npx cap sync",
+    "open:client:android": "cd client && npx cap open android",
+    "open:client:ios": "cd client && npx cap open ios",
+    "open:concierge:android": "cd concierge && npx cap open android",
+    "open:concierge:ios": "cd concierge && npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/local-notifications": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0"
+  }
+}
