@@ -96,3 +96,45 @@ jobs:
           path: |
             ${{ matrix.app }}-simulator.zip
             ${{ matrix.app }}-unsigned.ipa
+
+  release:
+    name: Публикация в Releases
+    # На каждый push (main и рабочие ветки) — сборки с постоянными прямыми ссылками:
+    # https://github.com/<owner>/<repo>/releases/latest/download/<файл>
+    if: github.event_name != 'pull_request'
+    needs: [server, android, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist }
+      - name: Файлы с понятными именами
+        run: |
+          mkdir out
+          cp dist/android-client-debug-apk/*.apk    out/moy-avtomekhanik.apk
+          cp dist/android-concierge-debug-apk/*.apk out/ma-konsierzh.apk
+          cp dist/ios-client/client-unsigned.ipa       out/moy-avtomekhanik-ios-unsigned.ipa
+          cp dist/ios-client/client-simulator.zip      out/moy-avtomekhanik-ios-simulator.zip
+          cp dist/ios-concierge/concierge-unsigned.ipa out/ma-konsierzh-ios-unsigned.ipa
+          cp dist/ios-concierge/concierge-simulator.zip out/ma-konsierzh-ios-simulator.zip
+          ls -la out
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Сборка ${{ github.run_number }} · ${{ github.ref_name }}
+          make_latest: true
+          files: out/*
+          body: |
+            Мобильные приложения экосистемы «Мой автомеханик».
+
+            **Android** — скачайте APK на телефон и установите (разрешите установку из браузера):
+            - `moy-avtomekhanik.apk` — приложение клиентки
+            - `ma-konsierzh.apk` — приложение консьержа
+
+            **iOS** — без подписи Apple устанавливается только через Sideloadly/AltStore со своим Apple ID:
+            - `*-ios-unsigned.ipa` — для iPhone
+            - `*-ios-simulator.zip` — для симулятора Xcode на Mac
+
+            Сервер: ${{ env.MA_SERVER_URL || 'не задан — адрес вводится в приложении (нажмите на индикатор связи вверху)' }}

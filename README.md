@@ -11,6 +11,15 @@
 
 Интерфейсы взяты из прототипов (клиентка v1.9, СТО v1.6, диспетчер, консьерж) без перерисовки. Демо-данные из прототипов заменены живыми данными с сервера.
 
+## Скачать приложения
+
+Каждая сборка в CI публикуется в [Releases](https://github.com/Tapashka/ServiceMan/releases/latest). Ссылки ниже всегда ведут на последнюю сборку:
+
+| | Android | iOS |
+|---|---|---|
+| Мой автомеханик (клиентка) | [moy-avtomekhanik.apk](https://github.com/Tapashka/ServiceMan/releases/latest/download/moy-avtomekhanik.apk) | [.ipa без подписи](https://github.com/Tapashka/ServiceMan/releases/latest/download/moy-avtomekhanik-ios-unsigned.ipa) · [симулятор](https://github.com/Tapashka/ServiceMan/releases/latest/download/moy-avtomekhanik-ios-simulator.zip) |
+| Консьерж | [ma-konsierzh.apk](https://github.com/Tapashka/ServiceMan/releases/latest/download/ma-konsierzh.apk) | [.ipa без подписи](https://github.com/Tapashka/ServiceMan/releases/latest/download/ma-konsierzh-ios-unsigned.ipa) · [симулятор](https://github.com/Tapashka/ServiceMan/releases/latest/download/ma-konsierzh-ios-simulator.zip) |
+
 ## Быстрый старт
 
 Нужен Node.js 22.5 или новее: используется встроенный SQLite.
