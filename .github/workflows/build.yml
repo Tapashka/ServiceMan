@@ -32,6 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 1   # Maven Central отвечает 429 на параллельные загрузки — собираем по очереди, второй берёт кэш
       matrix:
         app: [client, concierge]
     steps:
@@ -40,6 +41,7 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
+      - uses: gradle/actions/setup-gradle@v4   # кэш зависимостей Gradle между запусками
       - run: npm ci
         working-directory: mobile
       - name: Веб-часть и синхронизация Capacitor
@@ -47,7 +49,11 @@ jobs:
         run: node scripts/build-www.mjs ${{ matrix.app }} && cd ${{ matrix.app }} && npx cap sync android
       - name: Сборка APK (debug)
         working-directory: mobile/${{ matrix.app }}/android
-        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+        run: |
+          chmod +x gradlew
+          # загрузка зависимостей с повтором: репозитории иногда отвечают 429 Too Many Requests
+          for i in 1 2 3; do ./gradlew dependencies --no-daemon -q > /dev/null && break; echo "повтор через $((i*30)) с"; sleep $((i*30)); done
+          ./gradlew assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: android-${{ matrix.app }}-debug-apk
