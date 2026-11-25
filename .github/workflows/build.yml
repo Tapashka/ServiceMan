@@ -27,6 +27,24 @@ jobs:
       - run: npm test
         working-directory: server
 
+  deploy:
+    name: Деплой сервера на Render
+    # Только push в main и только после зелёных тестов сервера.
+    # Секрет RENDER_DEPLOY_HOOK: Render → сервис → Settings → Deploy Hook → скопировать URL.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [server]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Вызвать deploy hook
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::Секрет RENDER_DEPLOY_HOOK не задан — автодеплой пропущен. См. README → «Автодеплой»."
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK" -o /dev/null && echo "Render: деплой коммита ${GITHUB_SHA::7} запущен"
+
   android:
     name: Android · ${{ matrix.app }}
     runs-on: ubuntu-latest

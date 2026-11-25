@@ -123,6 +123,17 @@ DOMAIN=ma.ваш-домен.by docker compose up -d --build
 
 Caddy сам выпустит сертификат Let's Encrypt. Данные хранятся в томе `ma-data` и переживают перезапуски.
 
+### Автодеплой с GitHub
+
+Каждый push в `main` прогоняет тесты сервера. Если тесты прошли, GitHub Actions запускает деплой на Render (задача «Деплой сервера на Render»). Чтобы это работало, один раз сделайте так:
+
+1. Render → сервис `moy-avtomekhanik` → **Settings** → **Deploy Hook** → скопируйте URL.
+2. GitHub → репозиторий → **Settings → Secrets and variables → Actions → New repository secret**: имя `RENDER_DEPLOY_HOOK`, значение — скопированный URL.
+
+URL хука — секрет: с ним кто угодно может запустить деплой. Если он утёк, перевыпустите его в Render (Regenerate).
+
+Пока секрет не задан, задача деплоя пропускается с предупреждением, остальная сборка не падает.
+
 ### Подключить мобильные приложения к серверу
 
 1. GitHub → Settings → Secrets and variables → Actions → вкладка **Variables** → New variable: `MA_SERVER_URL` = `https://ваш-адрес`.
