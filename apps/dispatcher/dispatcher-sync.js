@@ -139,10 +139,10 @@
       <div class="topbar"><div><h1>Заказы</h1><p class="sub">Шаги консьержа и СТО в реальном времени · подсветка зависших заказов</p></div></div>
       <table class="tbl"><thead><tr><th style="width:210px;">Заказ</th><th>Ход заказа</th><th style="width:220px;">Сейчас</th><th></th></tr></thead><tbody>
       ${orders.map(o=>`<tr class="${o.stuck?'hl':''}">
-        <td><b>№${o.id}</b> · ${esc(o.car)}<div class="sub">${esc(o.client)} · ${esc(o.sto)}</div><div class="sub">Консьерж: ${esc(o.concierge)}</div></td>
-        <td><div class="steps-track">${ORDER_STEPS.map((s,i)=>`<div class="${i<o.step?'done':i===o.step?'cur':''}" title="${s}"></div>`).join('')}</div>
+        <td class="order-cell"><b>№${o.id}</b> · ${esc(o.car)}<div class="sub">${esc(o.client)} · ${esc(o.sto)}</div><div class="sub">Консьерж: ${esc(o.concierge)}</div></td>
+        <td class="steps-cell"><div class="steps-track">${ORDER_STEPS.map((s,i)=>`<div class="${i<o.step?'done':i===o.step?'cur':''}" title="${s}"></div>`).join('')}</div>
           <div class="steps-lbl"><span>${ORDER_STEPS[0]}</span><span>${o.step>=8?'Возвращено':ORDER_STEPS[o.step]}</span><span>${ORDER_STEPS[7]}</span></div></td>
-        <td>${esc(o.stage)}<div class="sub">в стадии: ${o.inStage}</div>${o.stuck?`<div class="sub" style="color:var(--alert); font-weight:600;">${esc(o.stuck)}</div>`:''}${o.frozen?'<div class="sub" style="color:var(--alert);">оплата заморожена</div>':''}</td>
+        <td class="nw">${esc(o.stage)}<div class="sub">в стадии: ${o.inStage}</div>${o.stuck?`<div class="sub" style="color:var(--alert); font-weight:600;">${esc(o.stuck)}</div>`:''}${o.frozen?'<div class="sub" style="color:var(--alert);">оплата заморожена</div>':''}</td>
         <td style="text-align:right; white-space:nowrap;">${o.stuck?`<button class="btn btn-outline btn-sm" onclick="nudge('${o.id}')">Написать сторонам</button>`:''}</td>
       </tr>`).join('') || '<tr><td colspan="4" class="sub">Активных заказов нет</td></tr>'}</tbody></table>`;
   };
