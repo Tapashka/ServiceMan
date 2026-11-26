@@ -1,6 +1,5 @@
 /* Приложение автоконсьержа — подключено к серверу экосистемы «Мой автомеханик».
    Интерфейс из прототипа, данные и действия — общие с клиенткой, СТО и диспетчером. */
-const ME = new URLSearchParams(location.search).get('as') || 'k1';
 if (new URLSearchParams(location.search).get('embed')) document.body.classList.add('embed');
 
 const ICONS={
@@ -12,7 +11,7 @@ const ICONS={
 const TYPES={
  partner:{name:'Партнёр (самозанятый)',desc:'Сам выбирает заказы из общей ленты. Выплата за каждый выезд.'},
  staff:{name:'Штатный сотрудник платформы',desc:'Работает по сменам. Видит общую ленту, диспетчер может назначить заказ напрямую. Зарплата по договору, выезды учитываются в смене.'},
- sto:{name:'Сотрудник СТО',desc:'Видит только заказы своей станции «Автосервис на Независимости». Оплату получает от станции, платформа выплату не начисляет.'}
+ sto:{name:'Сотрудник СТО',desc:'Видит только заказы своей станции. Оплату получает от станции, платформа выплату не начисляет.'}
 };
 const STEPS=[
  {t:'Заказ принят',s:'Клиентке ушёл push с вашей карточкой'},
@@ -51,7 +50,7 @@ function buildJobs(){
  for(const o of V.orders){
   for(const leg of ['pickup','ret']){
    const L=o[leg]; if(!L) continue;
-   const mine=L.conciergeId===ME;
+   const mine=L.conciergeId===MA.who.id;
    if(!mine && L.conciergeId) continue;
    if(!mine && leg==='pickup' && o.status!=='confirmed') continue;
    if(!mine && leg==='ret' && o.status!=='ready') continue;
@@ -105,7 +104,7 @@ function vFeed(){
  if(A)h+=`<button class="card tap" data-go="trip" style="border-color:var(--amber)"><div class="row"><span class="pill am">Активный заказ</span><span class="sp"></span><span class="mono">№${A.orderId} · ${A.kind}</span></div><div class="car">${esc(A.car)}</div><div class="muted">${stepsOf(A)[A.L.step].t} · ${stepsOf(A)[A.L.step].s}</div></button>`;
  if(!on)return h+`<div class="empty">Лента появится после начала смены.<br>Геопозиция передаётся только во время заказа.</div>`;
  h+=`<div class="chips">${[['all','Все'],['near','Рядом'],['today','Сегодня'],['akpp','Только АКПП']].map(([k,t])=>`<button class="chip ${S.filter===k?'on':''}" data-f="${k}">${t}</button>`).join('')}</div>`;
- if(S.type==='sto')h+=`<div class="muted">Показаны заказы станции «Автосервис на Независимости»</div>`;
+ if(S.type==='sto')h+=`<div class="muted">Показаны заказы вашей станции</div>`;
  h+=l.length?l.map(o=>orderCard(o,true)).join(''):`<div class="empty">Подходящих заказов нет. Мы пришлём push, когда появится новый.</div>`;
  return h}
 
@@ -182,7 +181,7 @@ function vAct(){const a=S.act,n=a.n,done=a.photos.filter(Boolean).length,j=activ
  ${ready?'':'<div class="muted">Нужны все 12 фото и пробег.</div>'}`}
 
 function myActs(){const out=[];
- for(const o of V.orders)for(const n of [1,2,4]){const a=o.acts&&o.acts[n];if(a&&a.by===ME)out.push({o,a})}
+ for(const o of V.orders)for(const n of [1,2,4]){const a=o.acts&&o.acts[n];if(a&&a.by===MA.who.id)out.push({o,a})}
  return out.sort((x,y)=>y.a.ts-x.a.ts)}
 function actPill(n,st){if(st==='disputed')return '<span class="pill urg">Спор</span>';if(st==='accepted')return '<span class="pill ok">Подтверждён</span>';return `<span class="pill am">${n===2?'Ждёт СТО':'Ждёт клиентку · 24 ч'}</span>`}
 function vTrips(){let h='';const A=activeJob();
@@ -196,20 +195,22 @@ function vTrips(){let h='';const A=activeJob();
 function vMoney(){
  const L=V.ledger, k=V.concierge, week=L.filter(l=>Date.now()-l.ts<7*864e5);
  const trips=week.filter(l=>l.sum>0).length, fines=k.fines.filter(f=>!f.removed).length;
- if(S.type==='sto')return `<div class="card"><b>Оплату выездов начисляет ваша станция</b><div class="muted">Платформа учитывает ваши поездки и рейтинг, но не делает выплат сотрудникам СТО.</div></div><div class="stat"><div><b>${trips}</b><small>выездов за неделю</small></div><div><b>${String(k.rating).replace('.',',')}</b><small>рейтинг</small></div><div><b>${fines}</b><small>опозданий</small></div></div>`;
- if(S.type==='staff')return `<div class="card"><b>Смена 08:00–20:00</b><div class="muted">Зарплата по трудовому договору. Здесь видно, что засчитано в смену.</div></div><div class="stat"><div><b>${trips}</b><small>выездов за неделю</small></div><div><b>${String(k.rating).replace('.',',')}</b><small>рейтинг</small></div><div><b>${fines}</b><small>опоздание</small></div></div><div class="card">${L.slice(0,8).map(l=>`<div class="tx"><span>${MA.when(l.ts).replace('Сегодня, ','сегодня ')} · ${esc(l.text)}</span><span class="mono ${l.sum<0?'neg':''}">${l.sum<0?'в карточке':'в смене'}</span></div>`).join('')}</div>`;
+ if(S.type==='sto')return `<div class="card"><b>Оплату выездов начисляет ваша станция</b><div class="muted">Платформа учитывает ваши поездки и рейтинг, но не делает выплат сотрудникам СТО.</div></div><div class="stat"><div><b>${trips}</b><small>выездов за неделю</small></div><div><b>${rat(k)}</b><small>рейтинг</small></div><div><b>${fines}</b><small>опозданий</small></div></div>`;
+ if(S.type==='staff')return `<div class="card"><b>Смена 08:00–20:00</b><div class="muted">Зарплата по трудовому договору. Здесь видно, что засчитано в смену.</div></div><div class="stat"><div><b>${trips}</b><small>выездов за неделю</small></div><div><b>${rat(k)}</b><small>рейтинг</small></div><div><b>${fines}</b><small>опоздание</small></div></div><div class="card">${L.slice(0,8).map(l=>`<div class="tx"><span>${MA.when(l.ts).replace('Сегодня, ','сегодня ')} · ${esc(l.text)}</span><span class="mono ${l.sum<0?'neg':''}">${l.sum<0?'в карточке':'в смене'}</span></div>`).join('')}</div>`;
  const sum=week.reduce((s,l)=>s+l.sum,0);
- return `<div class="stat"><div><b>${money(week.filter(l=>l.sum>0).reduce((s,l)=>s+l.sum,0))}</b><small>за неделю</small></div><div><b>${String(k.rating).replace('.',',')}</b><small>рейтинг</small></div><div><b>${fines}</b><small>штраф</small></div></div>
+ return `<div class="stat"><div><b>${money(week.filter(l=>l.sum>0).reduce((s,l)=>s+l.sum,0))}</b><small>за неделю</small></div><div><b>${rat(k)}</b><small>рейтинг</small></div><div><b>${fines}</b><small>штраф</small></div></div>
  <div class="card"><div class="row"><span class="lbl">К выплате в пятницу</span><span class="sp"></span><span class="money">${money(sum)}</span></div><div class="muted">На карту, указанную в профиле. Для самозанятого чек формируется автоматически.</div></div>
  <div class="card">${L.slice(0,10).map(l=>`<div class="tx"><span>${MA.when(l.ts).replace('Сегодня, ','сегодня ')} · ${esc(l.text)}</span><span class="mono ${l.sum<0?'neg':''}">${l.sum>0?'+':l.sum===0?'±':''}${money(l.sum)}</span></div>`).join('')}</div>
  <button class="btn sec" id="dispute">Оспорить штраф</button>`}
 
-function vMe(){const k=V.concierge;return `<div class="card"><div class="row"><span class="car">${esc(k.full)}</span><span class="sp"></span><span class="pill ok">Проверен</span></div><div class="muted">${esc(k.car)} · стаж вождения 9 лет · рейтинг ${String(k.rating).replace('.',',')} · ${k.trips} поездок</div></div>
- <div class="lbl">Тип консьержа (для демо)</div>
+function rat(k){return k.rating?String(k.rating).replace('.',','):'—'}
+function vMe(){const k=V.concierge;return `<div class="card"><div class="row"><span class="car">${esc(k.full)}</span><span class="sp"></span><span class="pill">${k.trips?'Работает':'Новый'}</span></div><div class="muted">${esc(k.car||'Машина не указана')}${k.phone?' · '+esc(k.phone):''} · ${k.rating?'рейтинг '+rat(k)+' · ':''}${k.trips||0} поездок</div>
+ <button class="btn sec" id="editMe" style="margin-top:10px">Изменить данные</button></div>
+ <div class="lbl">Тип работы</div>
  <div class="seg">${Object.entries(TYPES).map(([key,v])=>`<label><input type="radio" name="type" id="type-${key}" value="${key}" ${S.type===key?'checked':''}><span><b>${v.name}</b><br><span class="muted">${v.desc}</span></span></label>`).join('')}</div>
  <div class="lbl">Умею водить</div><div class="chips"><span class="chip on">АКПП</span><span class="chip on">МКПП</span><span class="chip">Электромобиль</span></div>
  <div class="lbl">Документы</div>
- <div class="card"><div class="tx"><span>Паспорт</span><span class="mono" style="color:var(--teal)">проверен</span></div><div class="tx"><span>Водительское удостоверение, кат. B</span><span class="mono" style="color:var(--teal)">до 2031</span></div><div class="tx"><span>Страховка консьержа</span><span class="mono" style="color:var(--teal)">действует</span></div><div class="tx"><span>Статус самозанятого</span><span class="mono">${S.type==='partner'?'подтверждён':'не нужен'}</span></div></div>
+ <div class="card"><div class="muted">Паспорт, водительское удостоверение и страховку проверяет диспетчер перед первым выездом.</div></div>
  <div class="lbl">Сервер экосистемы</div><div class="card"><div class="tx"><span class="mono" style="font-size:12px">${esc(MA.serverUrl())}</span><span class="mono" style="color:${MA.status==='online'?'var(--teal)':'var(--alert)'}">${MA.status==='online'?'онлайн':'нет связи'}</span></div></div>
  <button class="btn sec" id="support">Написать диспетчеру</button>`}
 
@@ -277,6 +278,7 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,[da
  if(d.go)return go(d.go);
  if(d.open)return go('order',{open:d.open});
  if(d.f){S.filter=d.f;return render()}
+ if(t.id==='editMe'){const k=V.concierge;const full=prompt('Имя и фамилия',k.full||'');if(full===null)return;const phone=prompt('Телефон',k.phone||'');if(phone===null)return;const car=prompt('Ваша машина',k.car||'');if(car===null)return;return act('concierge.update',{full,phone,car},'Данные сохранены')}
  if(t.id==='shiftSw'){const on=!V.concierge.onShift;return act('concierge.shift',{on},on?'Смена началась. Вы в ленте.':'Смена закончена')}
  if(t.id==='take'){const job=JOBS.find(x=>x.id===S.open);if(!job)return;const r=await act('job.take',{orderId:job.orderId,leg:job.leg});if(r){S.tab='trips';go('trip');toast('Заказ ваш. Клиентка видит вашу карточку.')}return}
  if(d.adv!==undefined&&j){const r=await act('trip.step',{orderId:j.orderId,leg:j.leg});if(r&&d.thenAct)openAct(+d.thenAct);return}
@@ -319,7 +321,7 @@ function openAct(n){const j=activeJob();if(!j)return;
 window.MA_OPEN_LINK=(l)=>{const v=(l&&l.view)||'feed';if(v==='trip'){S.tab='trips';go('trip')}else if(v==='money'){S.tab='money';go('money')}else{S.tab='feed';go('feed')}};
 S.type=localStorage.getItem('ma.k.type')||'partner';
 render();
-MA.connect({role:'concierge',id:ME,badge:{pos:'top-right',compact:true},
+MA.connect({role:'concierge',badge:{pos:'top-right',compact:true},
  onState(v){const was=V&&activeJob();V=v;if(v.concierge&&v.concierge.type&&!localStorage.getItem('ma.k.type'))S.type=v.concierge.type;render();
   const now=activeJob();if(!was&&now&&now.L.assignedBy==='dispatcher'&&now.L.step===0){S.tab='trips';go('trip')}},
  onNotify(n){toast(n.title+(n.text?' · '+n.text:''));if(n.sound)beep()},

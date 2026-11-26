@@ -5,7 +5,6 @@
    акты подтверждаются здесь и видны СТО и диспетчеру, SOS и споры уходят в диспетчерскую.
    ===================================================================== */
 (function(){
-  const ME = new URLSearchParams(location.search).get('as') || 'c1';
   let V = null, O = null, first = true;
   const esc = (s)=>MA.esc(s);
   const MAIN = CONVS[0].msgs;                  // массив чата с СТО (на него ссылается и чат на главной)
@@ -20,12 +19,19 @@
     .trk-steps .done{color:var(--ink-soft)}.trk-steps .done i{background:var(--teal);border-color:var(--teal)}
     .trk-steps .cur{color:var(--ink);font-weight:600}.trk-steps .cur i{background:var(--amber);border-color:var(--amber)}
     .stage-dot-wrap.viewing .lbl{text-decoration:underline}
-    body.embed{background:var(--paper)!important}`;
+    body.embed{background:var(--paper)!important}
+    /* переключатели «для демо» прототипа: пакет и роль в семье берутся из аккаунта */
+    .plan-switch,.demo-note,.hc-demo{display:none!important}`;
   document.head.appendChild(css);
   if(new URLSearchParams(location.search).get('embed') || MA.isNative()) document.body.classList.add('embed','full');
   CONVS[1].active = false; chatDemo = null;
   acts = [];
   notifications.length = 0;
+  // демо-данные прототипа: карты, семья, рекомендации — у нового пользователя ничего этого нет
+  cards = [];
+  family.members.length = 0;
+  { const b = document.querySelector('#screen-home .banner'); if(b) b.style.display = 'none'; }
+  { const t = document.querySelectorAll('#screen-home .car-card .meta > div'); if(t[1]) t[1].style.display = 'none'; }
 
   // ---------------- выбор активного заказа ----------------
   function pickActive(){
@@ -124,6 +130,9 @@
     const c = V.client;
     cars = c.cars.map(x=>Object.assign({}, x));
     userPlan = c.plan || userPlan;
+    if(!family.members.some(m=>m.rel==='Вы'))
+      family.members.unshift({ id:'me', name:c.name, ini:c.name.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase(), rel:'Вы', role:'owner', status:'active', phone:c.phone||'' });
+    family.name = 'Семья ' + c.name.split(/\s+/)[0];
     PLACES.pickup.lng = c.lng; PLACES.pickup.lat = c.lat; PLACES.pickup.label = c.address;
     if(O && O.lng){ PLACES.pickup.lng = O.lng; PLACES.pickup.lat = O.lat; PLACES.pickup.label = O.address; }
     deliveryMode = O && O.stoId ? O.delivery : deliveryMode;
@@ -161,6 +170,13 @@
     const car = cars[0];
     const cc = document.querySelector('#screen-home .car-card');
     if(cc && car){ cc.querySelector('.make').textContent = car.make; cc.querySelector('.plate').textContent = car.plate; const mv = cc.querySelector('.meta .v'); if(mv) mv.textContent = car.mileage; }
+    if(cc){
+      cc.querySelector('.meta').style.display = car ? '' : 'none';
+      cc.querySelector('.plate').style.display = car ? '' : 'none';
+      if(!car) cc.querySelector('.make').textContent = 'Добавьте свою машину';
+      const sw = cc.querySelector('.car-switch-btn');
+      if(sw){ sw.firstChild.textContent = car ? 'Выбрать другой автомобиль ' : 'Добавить автомобиль '; sw.setAttribute('onclick', car ? "go('garage')" : "go('addcar')"); }
+    }
     const ar = document.querySelector('#screen-home .active-repair');
     if(ar){
       ar.style.display = O ? 'flex' : 'none';
@@ -265,6 +281,7 @@
   }
   function _renderStageContent(i){
     const el = document.getElementById('statusContent');
+    { const t = document.querySelector('#screen-status .greet'); if(t) t.textContent = O ? 'ЗАЯВКА №' + O.id : 'РЕМОНТ'; }
     if(!O){ el.innerHTML = card('Нет активного ремонта', '<p>Опишите, что беспокоит, — станции рядом пришлют предложения, а автоконсьерж заберёт машину.</p><button class="btn btn-primary" style="margin-top:12px;" onclick="go(\'diagnose\')">Рассказать, что случилось</button>'); return; }
     const s = stoOf(O) || {name:'—', address:''};
     const k = legConcierge();
@@ -618,7 +635,7 @@
     if(navigator.vibrate && n.sound) try{ navigator.vibrate(120); }catch(e){}
   }
 
-  MA.connect({ role:'client', id:ME, badge:{pos:'top-center', compact:true},
+  MA.connect({ role:'client', badge:{pos:'top-center', compact:true},
     onState(v, prev, isFirst){
       const prevO = O;
       const chatBefore = MAIN.length;

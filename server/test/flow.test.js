@@ -1,16 +1,59 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { seed } from '../src/seed.js';
-import { apply, tick, viewFor, DomainError } from '../src/domain.js';
+import { apply, viewFor, ensureProfile, DomainError } from '../src/domain.js';
 
-const C = { role: 'client', id: 'c1' }, STO = { role: 'sto', id: 'sto1' }, K = { role: 'concierge', id: 'k1' }, D = { role: 'dispatcher', id: 'd1' };
+// Участники тестов — это «зарегистрированные пользователи»: профиль создаётся так же, как при первом входе.
+const C = { role: 'client', id: 'u-client' }, STO = { role: 'sto', id: 'u-sto' }, STO2 = { role: 'sto', id: 'u-sto2' };
+const K = { role: 'concierge', id: 'u-k' }, K2 = { role: 'concierge', id: 'u-k2' };
+const D = { role: 'dispatcher', id: 'u-d' }, DIR = { role: 'director', id: 'u-dir' };
 const run = (S, who, type, p, now) => apply(S, who, type, p, now);
-function advance(S, ms, from) { let t = from; for (let i = 0; i < ms / 1000; i++) { t += 1000; tick(S, t); } return t; }
+function world(now) {
+  const S = seed(now);
+  ensureProfile(S, C, { name: 'Клиентка Тест', phone: '+375 29 000-00-01', address: 'ул. Тестовая, 1' }, now);
+  ensureProfile(S, STO, { name: 'Мастер', stoName: 'СТО Тест', address: 'ул. Сервисная, 2' }, now);
+  ensureProfile(S, STO2, { name: 'Мастер 2', stoName: 'СТО Два' }, now);
+  ensureProfile(S, K, { name: 'Консьерж Тест', car: 'Lada' }, now);
+  ensureProfile(S, K2, { name: 'Второй Консьерж' }, now);
+  ensureProfile(S, D, { name: 'Диспетчер Тест' }, now);
+  ensureProfile(S, DIR, { name: 'Директор Тест' }, now);
+  return S;
+}
+
+test('стартовое состояние пустое: никаких выдуманных клиенток, СТО, заказов', () => {
+  const S = seed();
+  for (const k of ['clients', 'stos', 'concierges', 'orders', 'disputes']) assert.equal(Object.keys(S[k]).length, 0, k);
+  assert.equal(S.sos.length, 0); assert.equal(S.notifications.length, 0); assert.equal(S.ledger.length, 0);
+});
+
+test('профиль создаётся один раз и берёт данные из регистрации', () => {
+  const S = seed();
+  assert.equal(ensureProfile(S, C, { name: 'Анна Петрова', phone: '+375' }), true);
+  assert.equal(ensureProfile(S, C, { name: 'Другое имя' }), false);
+  assert.equal(S.clients[C.id].name, 'Анна Петрова'); assert.equal(S.clients[C.id].cars.length, 0);
+  ensureProfile(S, STO, { name: 'Иван', stoName: 'Гараж №1' });
+  assert.equal(S.stos[STO.id].name, 'Гараж №1'); assert.equal(S.stos[STO.id].rating, null);
+});
+
+test('права: роль и владение заказом проверяются на сервере', () => {
+  const now = Date.now();
+  const S = world(now);
+  const other = { role: 'client', id: 'u-other' }; ensureProfile(S, other, { name: 'Чужая' }, now);
+  const { result: { orderId: id } } = run(S, C, 'order.create', { tags: ['Плановое ТО'] }, now);
+  assert.throws(() => run(S, other, 'order.cancel', { orderId: id }, now), /Чужой заказ/);
+  assert.throws(() => run(S, C, 'offer.send', { orderId: id, price: 10 }, now), /недоступно для вашей роли/);
+  assert.throws(() => run(S, STO, 'sto.stage', { orderId: id, to: 1 }, now), /Чужой заказ/);
+  assert.throws(() => run(S, D, 'dispute.approve', { id: 'x' }, now), /недоступно/);
+  assert.throws(() => run(S, { role: 'client', id: 'nobody' }, 'order.create', { tags: ['Плановое ТО'] }, now), /Профиль/);
+  // СТО не видит контакты клиентки, пока та её не выбрала
+  const sv = viewFor(S, STO).orders.find((x) => x.id === id);
+  assert.equal(sv.phone, null); assert.equal(sv.address, null);
+});
 
 test('полный цикл: заявка → предложения → консьерж → ремонт → возврат → оплата', () => {
-  let now = Date.now();
-  const S = seed(now);
-  S.demo.spawnRequestAt = 0; S.demo.spawnSosAt = 0;
+  const now = Date.now();
+  const S = world(now);
+  run(S, C, 'car.add', { make: 'Kia Rio, 2019', plate: '0000 АА-7' }, now);
 
   const { result: { orderId: id } } = run(S, C, 'order.create', { tags: ['Стук или скрип'], text: 'Стучит спереди при повороте' }, now);
   const o = S.orders[id];
@@ -20,20 +63,21 @@ test('полный цикл: заявка → предложения → кон�
   assert.equal(sv.phone, null); assert.equal(sv.address, null);
 
   run(S, STO, 'offer.send', { orderId: id, price: 120, note: 'Готовы сегодня' }, now);
-  now = advance(S, 15000, now);                       // боты-СТО присылают свои цены
-  assert.ok(o.offers.length >= 3, 'ожидаем предложения от ботов-СТО');
+  run(S, STO2, 'offer.send', { orderId: id, price: 150 }, now);
+  assert.equal(o.offers.length, 2);
+  assert.equal(o.car, 'Kia Rio, 2019');
 
-  const mine = o.offers.find((x) => x.stoId === 'sto1');
+  const mine = o.offers.find((x) => x.stoId === STO.id);
   run(S, C, 'order.confirm', { orderId: id, offerId: mine.id, delivery: 'concierge', slot: 'Сегодня, 18:00–20:00' }, now);
-  assert.equal(o.status, 'confirmed'); assert.equal(o.stoId, 'sto1');
+  assert.equal(o.status, 'confirmed'); assert.equal(o.stoId, STO.id);
   // теперь СТО видит контакты
   assert.ok(viewFor(S, STO).orders.find((x) => x.id === id).phone);
 
-  // консьерж Игорь выходит на смену и берёт забор
+  // консьерж выходит на смену и берёт забор
   run(S, K, 'concierge.shift', { on: true }, now);
   assert.ok(viewFor(S, K).orders.some((x) => x.id === id && x.addressHidden));
   run(S, K, 'job.take', { orderId: id, leg: 'pickup' }, now);
-  assert.throws(() => run(S, { role: 'concierge', id: 'k3' }, 'job.take', { orderId: id, leg: 'pickup' }, now), DomainError);
+  assert.throws(() => run(S, K2, 'job.take', { orderId: id, leg: 'pickup' }, now), DomainError);
   run(S, K, 'trip.step', { orderId: id, leg: 'pickup' }, now);   // выехал
   run(S, K, 'trip.step', { orderId: id, leg: 'pickup' }, now);   // на месте
   run(S, K, 'trip.step', { orderId: id, leg: 'pickup' }, now);   // начал акт
@@ -80,29 +124,23 @@ test('полный цикл: заявка → предложения → кон�
 
 test('спор из акта → директор утверждает возврат → оплата разморожена и уменьшена', () => {
   const now = Date.now();
-  const S = seed(now);
-  const o = S.orders['0229'];
-  const d = S.disputes['Д-031'];
-  run(S, D, 'dispute.take', { id: d.id }, now);
-  run(S, D, 'dispute.propose', { id: d.id, decision: 'partial', amount: 40, reason: 'Царапина подтверждена фото' }, now);
-  assert.equal(d.status, 'approval');
-  run(S, { role: 'director', id: 'r1' }, 'dispute.approve', { id: d.id }, now);
-  assert.equal(d.status, 'closed'); assert.equal(o.frozen, false); assert.equal(o.estimate.total, 95);
-});
-
-test('боты доводят заказ клиентки до конца, если диспетчер назначил бота-консьержа и выбрана СТО-бот', () => {
-  let now = Date.now();
-  const S = seed(now);
-  S.demo.spawnRequestAt = 0; S.demo.spawnSosAt = 0;
-  const { result: { orderId: id } } = run(S, C, 'order.create', { tags: ['Плановое ТО'] }, now);
-  now = advance(S, 6000, now);
+  const S = world(now);
+  const { result: { orderId: id } } = run(S, C, 'order.create', { tags: ['Стук или скрип'] }, now);
   const o = S.orders[id];
-  const bot = o.offers.find((x) => x.stoId !== 'sto1');
-  run(S, C, 'order.confirm', { orderId: id, offerId: bot.id, delivery: 'concierge' }, now);
-  run(S, D, 'concierge.assign', { orderId: id, conciergeId: 'k3' }, now);
-  for (let i = 0; i < 400 && o.status !== 'ready'; i++) { now += 1000; tick(S, now); if (o.acts[1] && o.acts[1].status === 'pending') run(S, C, 'act.accept', { orderId: id, n: 1 }, now); if (o.estimate.status === 'sent') run(S, C, 'estimate.approve', { orderId: id }, now); }
-  assert.equal(o.status, 'ready');
-  run(S, D, 'concierge.assign', { orderId: id, conciergeId: 'k4' }, now);
-  for (let i = 0; i < 400 && o.status !== 'returned'; i++) { now += 1000; tick(S, now); }
-  assert.equal(o.status, 'returned');
+  const off = run(S, STO, 'offer.send', { orderId: id, price: 135 }, now).result;
+  run(S, C, 'order.confirm', { orderId: id, offerId: off.id, delivery: 'self' }, now);
+  run(S, STO, 'sto.intakeSelf', { orderId: id }, now);
+  run(S, STO, 'sto.stage', { orderId: id, to: 1 }, now);
+  run(S, STO, 'sto.stage', { orderId: id, to: 2 }, now);
+  run(S, STO, 'estimate.send', { orderId: id, items: [{ name: 'Колодки', price: 90 }, { name: 'Работа', price: 45 }] }, now);
+  run(S, C, 'estimate.approve', { orderId: id }, now);
+  run(S, C, 'dispute.open', { orderId: id, text: 'Не согласна с суммой' }, now);
+  const d = S.disputes[o.disputeId];
+  assert.ok(o.frozen);
+  run(S, D, 'dispute.take', { id: d.id }, now);
+  assert.match(d.log.at(-1).x, /Диспетчер Тест/);
+  run(S, D, 'dispute.propose', { id: d.id, decision: 'partial', amount: 40, reason: 'Позиция не согласована' }, now);
+  assert.equal(d.status, 'approval'); assert.equal(d.proposal.by, 'Диспетчер Тест');
+  run(S, DIR, 'dispute.approve', { id: d.id }, now);
+  assert.equal(d.status, 'closed'); assert.equal(o.frozen, false); assert.equal(o.estimate.total, 95);
 });

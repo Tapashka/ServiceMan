@@ -55,7 +55,6 @@ main{padding:16px 20px 28px;display:grid;gap:16px;grid-template-columns:400px 40
   <div><small>Экосистема · все приложения синхронно</small><h1>Мой автомеханик</h1></div>
   <div class="sp"></div>
   <span class="status" id="st"><i></i><span>сервер…</span></span>
-  <button class="hbtn" id="reset">Сбросить демо</button>
 </header>
 <main>
   <section class="pane phone">
@@ -71,8 +70,9 @@ main{padding:16px 20px 28px;display:grid;gap:16px;grid-template-columns:400px 40
     <div class="feed" id="feed"><div class="ev"><time></time><div>Ждём первые действия…</div></div></div>
     <div class="guide"><b>Сквозной сценарий</b>
       <ol>
+        <li>В каждом приложении зарегистрируйтесь: клиентка, СТО, консьерж. Диспетчера назначает администратор.</li>
         <li>Клиентка: «Рассказать, что случилось» → опубликовать заявку.</li>
-        <li>СТО: «Предложить цену». Боты-станции тоже ответят.</li>
+        <li>СТО: «Предложить цену».</li>
         <li>Клиентка выбирает СТО и подтверждает с консьержем.</li>
         <li>Консьерж: включить смену, взять заказ, пройти шаги и акты.</li>
         <li>СТО: принять акт №2, диагностика, смета → клиентка одобряет.</li>
@@ -82,7 +82,7 @@ main{padding:16px 20px 28px;display:grid;gap:16px;grid-template-columns:400px 40
   </section>
   <div class="row2">
     <section class="pane">
-      <div class="ph"><b>Панель СТО</b><span class="tag">веб</span><span>Автосервис на Независимости</span><a href="sto/" target="_blank" rel="noopener">отдельно ↗</a></div>
+      <div class="ph"><b>Панель СТО</b><span class="tag">веб</span><a href="sto/" target="_blank" rel="noopener">отдельно ↗</a></div>
       <iframe src="sto/" title="Панель СТО" style="height:760px"></iframe>
     </section>
     <section class="pane">
@@ -92,7 +92,7 @@ main{padding:16px 20px 28px;display:grid;gap:16px;grid-template-columns:400px 40
   </div>
 </main>
 <script>
-const WHO = {client:'Клиентка', sto:'СТО', concierge:'Консьерж', dispatcher:'Диспетчер', director:'Директор', system:'Бот'};
+const WHO = {client:'Клиентка', sto:'СТО', concierge:'Консьерж', dispatcher:'Диспетчер', director:'Директор', system:'Система'};
 const T = {
   'order.create':'опубликовала заявку','order.cancel':'отменила заявку','order.confirm':'выбрала СТО и подтвердила заказ','estimate.approve':'одобрила смету','estimate.decline':'не согласовала смету',
   'act.accept':'подтвердил(а) акт','order.pay':'оплатила заказ','order.rate':'поставила оценку','car.add':'добавила машину','client.update':'обновила профиль',
@@ -101,7 +101,7 @@ const T = {
   'concierge.type':'сменил тип','job.take':'взял заказ','concierge.assign':'назначил консьержа','concierge.reassign':'переназначил консьержа','trip.step':'следующий шаг поездки',
   'fine.dispute':'оспорил штраф','sos.create':'отправил(а) SOS','sos.cancel':'отменила SOS','sos.step':'обработал SOS','dispute.open':'открыл(а) спор','dispute.take':'взял спор в работу',
   'dispute.request':'запросил информацию','dispute.chat':'написал сторонам спора','dispute.propose':'предложил решение','dispute.approve':'утвердил возврат','dispute.reject':'вернул спор на доработку',
-  'fine.remove':'снял штраф','order.nudge':'написал сторонам зависшего заказа','handover.note':'оставил комментарий смене','handover.submit':'передал смену','demo.reset':'сбросил демо','notif.read':null,'concierge.loc':null
+  'fine.remove':'снял штраф','order.nudge':'написал сторонам зависшего заказа','handover.note':'оставил комментарий смене','handover.submit':'передал смену','profile.create':'зарегистрировался(-ась)','sto.update':'обновила профиль СТО','concierge.update':'обновил профиль','notif.read':null,'concierge.loc':null
 };
 const STAGES = ['Принято','Диагностика','Смета','Ремонт','Готово'];
 function detail(e){
@@ -121,7 +121,11 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 let last='';
 async function poll(){
   try{
-    const r = await fetch('api/events?limit=60'); const list = await r.json();
+    // лента событий доступна только сотрудникам: берём вход из панели диспетчера
+    let tok=''; try{ tok=(JSON.parse(localStorage.getItem('ma.session.dispatcher')||'null')||{}).access_token||''; }catch(x){}
+    if(!tok){ document.getElementById('feed').innerHTML='<div class="ev"><time></time><div>Лента событий видна после входа в панели диспетчера.</div></div>'; last=''; return; }
+    const r = await fetch('api/events?limit=60',{headers:{Authorization:'Bearer '+tok}}); const list = await r.json();
+    if(!Array.isArray(list)){ document.getElementById('feed').innerHTML='<div class="ev"><time></time><div>'+esc(list.error||'Нет доступа к ленте')+'</div></div>'; last=''; return; }
     document.getElementById('st').className='status ok'; document.getElementById('st').lastElementChild.textContent='сервер онлайн';
     const rows = list.filter(e=>T[e.type]!==null).slice(0,40);
     const sig = rows.length ? rows[0].id : '';
@@ -130,12 +134,6 @@ async function poll(){
   }catch(x){ document.getElementById('st').className='status'; document.getElementById('st').lastElementChild.textContent='нет связи с сервером'; }
 }
 setInterval(poll, 1500); poll();
-document.getElementById('reset').onclick = async ()=>{
-  if(!confirm('Сбросить все заказы, споры и SOS к стартовым данным?')) return;
-  await fetch('api/reset',{method:'POST'});
-  try{ ['ma.k.dismissed'].forEach(k=>localStorage.removeItem(k)); }catch(e){}
-  document.querySelectorAll('iframe').forEach(f=>f.contentWindow.location.reload());
-};
 </script>
 </body>
 </html>

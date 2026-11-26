@@ -1,5 +1,6 @@
 // Сервер экосистемы «Мой автомеханик»
-//  • REST:      GET /api/state?role=&id=   POST /api/act {role,id,type,p}   POST /api/reset   GET /api/health
+//  • REST:      GET /api/config   GET /api/state?role=   POST /api/act {role,type,p}   GET /api/health
+//               (кроме config и health — с заголовком Authorization: Bearer <токен Supabase>)
 //  • WebSocket: /ws  — живая синхронизация всех приложений (клиентка, СТО, консьерж, диспетчер)
 //  • Статика:   /client/ /sto/ /dispatcher/ /concierge/ и страница экосистемы /
 import http from 'node:http';
@@ -8,18 +9,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { seed } from './seed.js';
-import { apply, tick, viewFor, matchTo, DomainError } from './domain.js';
+import { apply, viewFor, matchTo, ensureProfile, staffName, DomainError } from './domain.js';
 import { openStore } from './store.js';
+import { verify, authConfig, AuthError, ALL_ROLES } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = +process.env.PORT || 8080;
 const APPS_DIR = path.resolve(process.env.APPS_DIR || path.join(__dirname, '../../apps'));
 const DB_FILE = process.env.DB_FILE || path.join(__dirname, '../data/ecosystem.db');
-const ROLES = new Set(['client', 'sto', 'concierge', 'dispatcher', 'director']);
+const ROLES = new Set(ALL_ROLES);
 
-const store = openStore(DB_FILE);
-let S = store.load() || seed();
-if (!S.version) S = seed();
+if (authConfig.disabled) console.warn('ВНИМАНИЕ: AUTH_DISABLED=1 — вход без пароля, только для разработки');
+else if (!authConfig.enabled) console.warn('ВНИМАНИЕ: не заданы SUPABASE_URL и SUPABASE_ANON_KEY — приложения не смогут войти');
+
+const store = await openStore(DB_FILE);
+let S = await store.load();
+// версия 1 — старое демо-состояние с выдуманными клиентками и СТО: начинаем с чистого листа
+if (!S || !S.version || S.version < 2) S = seed();
 store.save(S);
 
 // ------------------------------------------------------------ рассылка
@@ -39,7 +45,6 @@ function broadcastLoc(list) {
 }
 
 function act(who, type, p) {
-  if (type === 'demo.reset') { S = seed(); store.save(S); store.event(who, type, {}); broadcastState(); return { ok: true }; }
   const ctx = apply(S, who, type, p || {});
   store.event(who, type, p);
   broadcastState();
@@ -47,15 +52,15 @@ function act(who, type, p) {
   return { ok: true, result: ctx.result };
 }
 
-// ------------------------------------------------------------ боты и время
-setInterval(() => {
-  try {
-    const { changed, ctx } = tick(S);
-    if (ctx.loc.length) broadcastLoc(ctx.loc);
-    ctx.events.forEach((e) => store.event(e.who, e.type, e.p));
-    if (changed) { broadcastState(); deliverNotifications(ctx.out); }
-  } catch (e) { console.error('tick error', e); }
-}, 1000);
+// ------------------------------------------------------------ вход
+// Проверяет токен, создаёт профиль при первом входе и возвращает { role, id }.
+async function login(token, role) {
+  if (!ROLES.has(role)) throw new AuthError('Неизвестная роль');
+  const { who, meta } = await verify(token, role);
+  if (ensureProfile(S, who, meta)) { store.event(who, 'profile.create', { name: meta.name }); broadcastState(); }
+  return who;
+}
+function bearer(req) { const h = req.headers.authorization || ''; return h.startsWith('Bearer ') ? h.slice(7) : ''; }
 
 // ------------------------------------------------------------ HTTP
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -64,7 +69,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 function json(res, code, obj) { cors(res); res.writeHead(code, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); }
 function readBody(req) {
@@ -73,34 +78,31 @@ function readBody(req) {
     req.on('end', () => { try { resolve(b ? JSON.parse(b) : {}); } catch (e) { reject(e); } }); req.on('error', reject);
   });
 }
-function whoFrom(o) {
-  const role = o && o.role; if (!ROLES.has(role)) return null;
-  return { role, id: String(o.id || ({ client: 'c1', sto: 'sto1', concierge: 'k1' }[role] || 'd1')) };
-}
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   if (req.method === 'OPTIONS') { cors(res); res.writeHead(204); return res.end(); }
   try {
-    if (url.pathname === '/api/health') return json(res, 200, { ok: true, seq: S.seq, clients: sockets.size });
+    if (url.pathname === '/api/health') return json(res, 200, { ok: true, seq: S.seq, clients: sockets.size, store: store.kind });
+    if (url.pathname === '/api/config') return json(res, 200, Object.assign({ authDisabled: authConfig.disabled }, authConfig.public));
     if (url.pathname === '/api/state') {
-      const who = whoFrom({ role: url.searchParams.get('role'), id: url.searchParams.get('id') });
-      if (!who) return json(res, 400, { ok: false, error: 'role?' });
+      const who = await login(bearer(req), url.searchParams.get('role'));
       return json(res, 200, viewFor(S, who));
     }
     if (url.pathname === '/api/act' && req.method === 'POST') {
-      const b = await readBody(req); const who = whoFrom(b);
-      if (!who) return json(res, 400, { ok: false, error: 'role?' });
+      const b = await readBody(req);
+      const who = await login(bearer(req), b.role);
       return json(res, 200, act(who, b.type, b.p));
     }
-    if (url.pathname === '/api/reset' && req.method === 'POST') return json(res, 200, act({ role: 'dispatcher', id: 'd1' }, 'demo.reset', {}));
     if (url.pathname === '/api/events') {
+      const who = await login(bearer(req), 'dispatcher');
       const name = (role, id) => role === 'client' ? S.clients[id] && S.clients[id].name : role === 'sto' ? S.stos[id] && S.stos[id].name
-        : role === 'concierge' ? S.concierges[id] && S.concierges[id].name : role === 'dispatcher' ? 'Ольга К.' : role === 'director' ? 'директор' : 'демо-бот';
-      const bot = (role, id) => (role === 'client' && S.clients[id] && S.clients[id].bot) || (role === 'sto' && S.stos[id] && S.stos[id].bot) || (role === 'concierge' && S.concierges[id] && S.concierges[id].bot);
-      return json(res, 200, store.recent(+url.searchParams.get('limit') || 100).map((e) => Object.assign(e, { actor: (name(e.role, e.actor) || e.actor) + (bot(e.role, e.actor) ? ' (бот)' : '') })));
+        : role === 'concierge' ? S.concierges[id] && S.concierges[id].name : staffName(S, { role, id });
+      const list = await store.recent(+url.searchParams.get('limit') || 100);
+      return json(res, 200, list.map((e) => Object.assign(e, { actor: name(e.role, e.actor) || e.actor })));
     }
   } catch (e) {
+    if (e instanceof AuthError) return json(res, 401, { ok: false, auth: true, error: e.message });
     if (e instanceof DomainError) return json(res, 422, { ok: false, error: e.message });
     console.error(e); return json(res, 500, { ok: false, error: 'Ошибка сервера' });
   }
@@ -126,14 +128,14 @@ wss.on('connection', (ws) => {
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
   ws.on('close', () => sockets.delete(ws));
-  ws.on('message', (raw) => {
+  ws.on('message', async (raw) => {
     let m; try { m = JSON.parse(raw); } catch { return; }
-    if (m.t === 'hello') {
-      ws.who = whoFrom(m);
-      if (!ws.who) return send(ws, { t: 'error', error: 'Неизвестная роль' });
+    if (m.t === 'hello') { // { t:'hello', role, token } — повторяется после обновления токена
+      try { ws.who = await login(m.token, m.role); }
+      catch (e) { ws.who = null; return send(ws, { t: 'auth', error: e instanceof AuthError ? e.message : 'Ошибка входа' }); }
       return send(ws, { t: 'state', data: viewFor(S, ws.who) });
     }
-    if (!ws.who) return send(ws, { t: 'error', error: 'Сначала hello' });
+    if (!ws.who) return send(ws, { t: 'auth', error: 'Войдите в аккаунт' });
     if (m.t === 'act') {
       try { const r = act(ws.who, m.type, m.p); send(ws, { t: 'ack', rid: m.rid, ok: true, result: r.result }); }
       catch (e) {
@@ -158,4 +160,11 @@ setInterval(() => { for (const ws of sockets) { if (!ws.isAlive) { ws.terminate(
 server.listen(PORT, () => {
   console.log(`«Мой автомеханик» — сервер экосистемы: http://localhost:${PORT}/`);
   console.log(`  клиентка  /client/   СТО  /sto/   диспетчер  /dispatcher/   консьерж  /concierge/`);
+});
+
+// при остановке (деплой на Render) дописываем последние изменения
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, async () => {
+  clearTimeout(saveTimer); store.save(S);
+  try { await store.flush(); } catch (e) { console.error(e); }
+  process.exit(0);
 });

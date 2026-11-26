@@ -2337,7 +2337,7 @@ function renderServicesHub(){
 function setPlan(k){
   userPlan = k;
   renderServicesHub(); renderHomeServices();
-  showToast(`Пакет «${PLANS[k].name}» (демо)`);
+  showToast(`Пакет «${PLANS[k].name}»`);
 }
 
 function openService(key, from){
@@ -3591,7 +3591,7 @@ renderGarage = function(){
       <div class="plate">${c.plate}</div>
       <div class="mileage">Пробег: ${c.mileage}</div>
     </div>`).join('')
-    : '<div class="content-card"><p>Пока никто не открыл машину семье. Это можно сделать в профиле автомобиля.</p></div>');
+    : (garageAll().length ? '<div class="content-card"><p>Пока никто не открыл машину семье. Это можно сделать в профиле автомобиля.</p></div>' : '<div class="content-card"><p>В гараже пока пусто. Добавьте машину — по ней СТО будут видеть марку, номер и пробег.</p></div>'));
 };
 
 function openGarageCar(k){

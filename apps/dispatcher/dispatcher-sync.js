@@ -21,9 +21,9 @@
         const drivingNow = b.leg==='pickup' ? (L.step===1||L.step===4) : (L.step===1||L.step===3);
         status = k.lateMin>0 ? 'late' : drivingNow ? 'road' : 'job';
         note = `${steps[L.step]}${drivingNow?` · ${Math.round((L.progress||0)*100)}% пути`:''} · ${b.leg==='ret'?'возврат':'забор'} · ${b.o.address||''} · слот ${b.o.slot||''}`;
-      } else if(!k.onShift){ status='off'; note = k.bot ? 'Не на смене' : 'Не на смене · приложение консьержа'; }
-      else { status='free'; note = 'Свободен'+(k.bot?'':' · в приложении'); }
-      return { id:k.id, name:k.name, car:k.car, rating:k.rating, status, order, note, lateMin:k.lateMin, dist:null, fines:k.fines||[], live:!k.bot };
+      } else if(!k.onShift){ status='off'; note = 'Не на смене'; }
+      else { status='free'; note = 'Свободен'; }
+      return { id:k.id, name:k.name, car:k.car, rating:k.rating, status, order, note, lateMin:k.lateMin, dist:null, fines:k.fines||[], live:true };
     });
   }
 
@@ -85,7 +85,7 @@
 
   // ---------------- действия ----------------
   window.sosStep = (id, step, what)=> act('sos.step', {id, step, what}, r=>r.text);
-  window.takeDispute = ()=> act('dispute.take', {id:openDisputeId, by:'Ольга К.'}, 'Спор в работе — стороны получили push');
+  window.takeDispute = ()=> act('dispute.take', {id:openDisputeId}, 'Спор в работе — стороны получили push');
   window.requestInfo = (who, what)=> act('dispute.request', {id:openDisputeId, who, what}, `Запрос отправлен ${who} — push в приложение`);
   window.sendChat = ()=>{ const el=document.getElementById('chatInp'); const v=el.value.trim(); if(!v) return; el.value=''; el.blur(); act('dispute.chat', {id:openDisputeId, text:v}, 'Сообщение ушло в чат заказа'); };
   window.submitProposal = ()=>{
@@ -94,7 +94,7 @@
     const reason = document.getElementById('decReason').value.trim();
     if(!reason){ showToast('Добавьте обоснование решения'); return; }
     document.activeElement && document.activeElement.blur();
-    act('dispute.propose', {id:openDisputeId, decision:k, amount, reason, by:'Ольга К.'}, (k==='partial'||k==='full') ? 'Отправлено директору — ему пришёл push' : 'Спор закрыт — стороны получили push');
+    act('dispute.propose', {id:openDisputeId, decision:k, amount, reason}, (k==='partial'||k==='full') ? 'Отправлено директору — ему пришёл push' : 'Спор закрыт — стороны получили push');
   };
   window.approve = (id)=>{ const c=(document.getElementById('dirComment-'+id)||{}).value||''; act('dispute.approve', {id, comment:c}, 'Возврат утверждён — клиентка и СТО получили push'); };
   window.reject = (id)=>{ const c=((document.getElementById('dirComment-'+id)||{}).value||'').trim(); if(!c){ showToast('Напишите, что нужно доработать'); return; } act('dispute.reject', {id, comment:c}, 'Спор возвращён диспетчеру'); };
@@ -109,18 +109,18 @@
   // ---------------- экраны, которым нужны живые данные ----------------
   window.renderConcierges = function(){
     document.getElementById('view-concierges').innerHTML = `
-      <div class="topbar"><div><h1>Консьержи</h1><p class="sub">Назначение на заказы и контроль опозданий. Опоздание больше 20 минут — штраф 50% от стоимости выезда (${money(CONCIERGE_FEE)}). Игорь работает в приложении консьержа, остальные — демо-боты.</p></div></div>
+      <div class="topbar"><div><h1>Консьержи</h1><p class="sub">Назначение на заказы и контроль опозданий. Опоздание больше 20 минут — штраф 50% от стоимости выезда (${money(CONCIERGE_FEE)}).</p></div></div>
       ${unassigned.map(u=>`<div class="panel" style="border-color:var(--amber);">
         <h4>Ждёт назначения · заказ №${u.id} · ${u.leg==='ret'?'возврат клиентке':'забор у клиентки'}</h4>
         <div class="kv"><span>${esc(u.car)} · ${esc(u.client)}</span><b>${esc(u.address)} · ${esc(u.slot)}</b></div>
         <p class="warn-note" style="margin:10px 0 8px;">Ближайшие свободные к адресу ${u.leg==='ret'?'СТО':'забора'}:</p>
-        ${u.free.length ? u.free.map(c=>`<div class="kv" style="align-items:center;"><span><b style="color:var(--ink);">${esc(c.name)}</b> · ${esc(c.car)} · ★ ${c.rating} ${c.dist!=null?` · ${String(c.dist).replace('.',',')} км`:''}${c.id==='k1'?' · <i>приложение</i>':''}</span><button class="btn btn-primary btn-sm" onclick="assign('${u.id}','${c.id}')">Назначить</button></div>`).join('') : '<p class="warn-note">Свободных консьержей на смене нет</p>'}
+        ${u.free.length ? u.free.map(c=>`<div class="kv" style="align-items:center;"><span><b style="color:var(--ink);">${esc(c.name)}</b> · ${esc(c.car)}${c.rating?' · ★ '+c.rating:''}${c.dist!=null?` · ${String(c.dist).replace('.',',')} км`:''}</span><button class="btn btn-primary btn-sm" onclick="assign('${u.id}','${c.id}')">Назначить</button></div>`).join('') : '<p class="warn-note">Свободных консьержей на смене нет</p>'}
       </div>`).join('')}
       <table class="tbl"><thead><tr><th>Консьерж</th><th>Статус</th><th>Сейчас</th><th>Штрафы</th><th></th></tr></thead><tbody>
       ${concierges.map((c,i)=>{
         const active = c.fines.filter(f=>!f.removed);
         return `<tr class="${c.status==='late'?'hl':''}">
-          <td class="nw"><div class="who"><b>${esc(c.name)}</b>${c.live?'<span class="pill free" style="font-size:10px;">приложение</span>':''}</div><div class="sub">${esc(c.car)} · ★ ${c.rating}</div></td>
+          <td class="nw"><div class="who"><b>${esc(c.name)}</b></div><div class="sub">${esc(c.car)}${c.rating?' · ★ '+c.rating:''}</div></td>
           <td class="nw"><span class="pill ${c.status}">${C_STATUS[c.status]}${c.status==='late'?' '+c.lateMin+' мин':''}</span></td>
           <td>${c.order?`Заказ №${c.order}<div class="sub">${esc(c.note)}</div>`:`<span class="sub">${esc(c.note)}</span>`}</td>
           <td class="mono nw">${active.length?active.map(f=>`${money(f.sum)} · №${f.order}`).join('<br>'):'—'}${c.fines.some(f=>f.removed)?'<div class="sub">есть снятые</div>':''}</td>
@@ -154,7 +154,7 @@
       ...orders.filter(o=>o.stuck).map(o=>({k:'o'+o.id, t:`Заказ №${o.id} · ${o.stuck}`, s:o.stage}))
     ];
     document.getElementById('view-handover').innerHTML = `
-      <div class="topbar"><div><h1>Передача смены</h1><p class="sub">Дневная смена (Ольга К.) → вечерняя смена 16:00–00:00 (Андрей М.). Комментарии сохраняются на сервере и видны следующей смене</p></div></div>
+      <div class="topbar"><div><h1>Передача смены</h1><p class="sub">Комментарии сохраняются на сервере и видны следующей смене</p></div></div>
       <div class="panel handover">${items.map(it=>`<div style="padding:10px 0; border-bottom:1px solid var(--line);">
         <div style="display:flex; justify-content:space-between; gap:10px;"><b style="font-size:13.5px;">${esc(it.t)}</b><span class="pill waiting">${esc(it.s)}</span></div>
         <textarea placeholder="Комментарий для следующей смены" data-hk="${it.k}">${esc(handoverNotes[it.k]||'')}</textarea>
@@ -189,8 +189,25 @@
   };
 
   // уведомления → тост + звук; SOS всегда со звуком
-  MA.connect({ role:'dispatcher', id:'d1', badge:{pos:'bottom-right'},
-    onState(v){ apply(v); safeRender(); },
+  // смена: настоящий сотрудник из аккаунта. Директор может смотреть и экран диспетчера, диспетчер экран директора — нет
+  window.renderShift = function(){
+    const me = V && V.profile ? V.profile.name : '';
+    document.getElementById('shiftBox').innerHTML = role==='dispatcher'
+      ? `Вы вошли как <b>диспетчер</b>${me?`<br><b>${esc(me)}</b>`:''}`
+      : `Вы вошли как <b>директор</b>${me?` · ${esc(me)}`:''}<br>Утверждаете все возвраты клиенткам`;
+  };
+  let roleSet = false;
+  MA.connect({ role:'dispatcher', badge:{pos:'bottom-right'},
+    onState(v){
+      apply(v);
+      if(!roleSet){
+        roleSet = true;
+        const isDir = v.me && v.me.role==='director';
+        document.getElementById('roleR').style.display = isDir ? '' : 'none';
+        setRole(isDir ? 'director' : 'dispatcher');
+      }
+      safeRender();
+    },
     onNotify(n){ showToast(n.title + (n.text ? ' · ' + n.text : '')); if(n.sound || n.urgent) beep(); }
   });
 })();

@@ -3,7 +3,6 @@
    Выбранные клиенткой заказы попадают в «Мои заявки»: приёмка по акту №2, диагностика, смета клиентке,
    ремонт, выдача консьержу по акту №3. Всё синхронно с клиенткой, консьержем и диспетчером. */
 (function(){
-  const ME = new URLSearchParams(location.search).get('as') || 'sto1';
   let V = null, pending = false, lastIds = null;
   const offerDraft = {};   // открытые формы предложений: {open, price, note}
   const hoDraft = {};      // черновики акта выдачи №3
@@ -20,7 +19,7 @@
   const kName = (id)=> id && V.concierges[id] ? V.concierges[id].name : '—';
 
   function toRequest(o, prev){
-    const mine = o.stoId===ME && o.status!=='published';
+    const mine = o.stoId===MA.who.id && o.status!=='published';
     let status = o.status==='published' ? (o.myOffer ? 'offered' : 'new') : mine ? (['closed','cancelled'].includes(o.status) ? 'done' : 'taken') : 'gone';
     const a2 = o.acts[2], a3 = o.acts[3];
     const kid = (o.ret && o.ret.conciergeId) || (o.pickup && o.pickup.conciergeId);
@@ -44,12 +43,31 @@
     requests = V.orders.map(o=>toRequest(o, prev[o.id])).filter(r=>r.status!=='gone')
       .sort((a,b)=>(b.urgent-a.urgent)||(b.o.createdAt-a.o.createdAt));
     lastIds = new Set(V.orders.map(o=>o.id));
-    history = V.orders.filter(o=>o.stoId===ME && o.status==='closed').sort((a,b)=>(b.paidTs||0)-(a.paidTs||0))
-      .map(o=>({car:o.car, date:new Date(o.paidTs||o.updatedAt).toLocaleDateString('ru',{day:'numeric',month:'short'}), rating:o.rating||5, payout:Math.round((o.paidAmount||o.estimate.total||o.price||0)*(1-V.consts.COMMISSION)*100)/100}));
+    history = V.orders.filter(o=>o.stoId===MA.who.id && o.status==='closed').sort((a,b)=>(b.paidTs||0)-(a.paidTs||0))
+      .map(o=>({car:o.car, date:new Date(o.paidTs||o.updatedAt).toLocaleDateString('ru',{day:'numeric',month:'short'}), rating:o.rating||0, payout:Math.round((o.paidAmount||o.estimate.total||o.price||0)*(1-V.consts.COMMISSION)*100)/100}));
     stoNotifs = V.notifications.map(n=>({ id:n.id, ico: SICON[n.ico] ? n.ico : (n.cat==='req'?'req':'order'), title:n.title, text:n.text, time:MA.when(n.ts).replace('Сегодня, ',''), unread:!n.read, link:n.link }));
     const s = V.sto;
     document.querySelectorAll('.sto-mini .name, #view-profile .profile-card .n').forEach(e=>e.textContent=s.name);
-    const r = document.querySelector('.sto-mini .rating'); if(r) r.textContent = `★ ${s.rating} · ${s.orders + history.length - 3} заказов`;
+    // рейтинг и число заказов — только по настоящим закрытым заказам этой СТО
+    const done = V.orders.filter(o=>o.stoId===MA.who.id && o.status==='closed');
+    const avg = done.filter(o=>o.rating).length ? (done.filter(o=>o.rating).reduce((a,o)=>a+o.rating,0)/done.filter(o=>o.rating).length).toFixed(1) : null;
+    const r = document.querySelector('.sto-mini .rating'); if(r) r.textContent = done.length ? `${avg?'★ '+avg+' · ':''}${done.length} заказов` : 'Новая станция · пока без заказов';
+    const av = document.querySelector('.sto-mini .av'); if(av) av.textContent = s.initials || '?';
+    const pa = document.querySelector('#view-profile .profile-card .a'); if(pa) pa.textContent = s.address || 'Адрес не указан';
+    const st = document.querySelectorAll('#view-profile .stat .v');
+    if(st[0]) st[0].textContent = avg ? avg+' ★' : '—';
+    if(st[1]) st[1].textContent = done.length;
+    if(st[2]) st[2].closest('.stat').style.display = 'none';
+    const spec = document.querySelector('#view-profile .tag-row'); if(spec) spec.closest('.panel').style.display = 'none';
+    const eb = document.querySelector('#view-profile .btn-outline');
+    if(eb && !eb.dataset.bound){ eb.dataset.bound='1'; eb.onclick = async ()=>{
+      const cur = V.sto || {};
+      const name = prompt('Название СТО', cur.name||''); if(name===null) return;
+      const address = prompt('Адрес СТО', cur.address||''); if(address===null) return;
+      const phone = prompt('Телефон', cur.phone||''); if(phone===null) return;
+      const hint = prompt('Как заехать (подсказка для консьержа и клиентки)', cur.hint||''); if(hint===null) return;
+      try{ await MA.act('sto.update', {name, address, phone, hint}); showToast('Профиль сохранён'); }catch(e){ showToast(e.message); }
+    }; }
   }
 
   function busyTyping(){ const a=document.activeElement; return a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.closest('.content'); }
@@ -324,7 +342,7 @@
     @media (max-width:700px){.of-row{grid-template-columns:1fr}}`;
   document.head.appendChild(css);
 
-  MA.connect({ role:'sto', id:ME, badge:{pos:'bottom-right'},
+  MA.connect({ role:'sto', badge:{pos:'bottom-right'},
     onState(v, prev, first){ applyState(v); if(first){ renderMarket(); } rerender(); const c=document.getElementById('stoChat'); if(c) c.scrollTop=c.scrollHeight; },
     onNotify(n){ pushStoUi(n); },
     onLoc(l){ if(!V) return; const o=V.orders.find(x=>x.id===l.orderId); if(o && o[l.leg]) o[l.leg].progress=l.progress; }

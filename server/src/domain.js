@@ -7,7 +7,7 @@
 //
 // Все действия приходят как {type, p} от конкретного участника (actor = {role, id}).
 
-import { TAG_PRICE, TAG_WORK, KIT, STO_ME, CLIENT_ME, CONCIERGE_ME } from './seed.js';
+import { TAG_PRICE, TAG_WORK, KIT } from './seed.js';
 
 const SEC = 1000, MIN = 60 * SEC;
 export const CONCIERGE_FEE = 25;     // цена выезда для клиентки, Br
@@ -15,7 +15,6 @@ export const COMMISSION = 0.05;      // комиссия платформы
 export const PAY = { pickup: 9, ret: 9 };
 
 // Скорость демо: сколько мс бот ждёт перед следующим шагом
-const BOT = { offer: 3500, choose: 6000, step: 5000, drive: 22000, stoStage: 7000, approve: 5000, pay: 6000 };
 
 export const PICKUP_STEPS = ['Заказ принят','Выехал к клиентке','На месте','Акт осмотра №1','В пути в СТО','Акт осмотра №2','Машина в СТО'];
 export const RETURN_STEPS = ['Заказ принят','Еду в СТО','В СТО · акт №3','Везу машину клиентке','Акт осмотра №4','Машина у клиентки'];
@@ -55,7 +54,6 @@ const toDisp = { role: 'dispatcher' };
 const toDir = { role: 'director' };
 
 function log(o, ctx, x) { o.log.push({ ts: ctx.now, x }); o.updatedAt = ctx.now; }
-function botAt(o, ctx, delay) { o.bot.next = ctx.now + delay; }
 
 function getOrder(S, id) { const o = S.orders[id]; if (!o) fail('Заказ не найден: ' + id); return o; }
 function kName(S, id) { return id && S.concierges[id] ? S.concierges[id].name : '—'; }
@@ -87,14 +85,86 @@ function makeAct(S, o, n, by, ctx, p = {}) {
 }
 
 // ---------------------------------------------------------------- действия
+// Кто может вызывать действие. Диспетчер и директор — сотрудники платформы (роль выдаётся вручную).
+const STAFF = ['dispatcher', 'director'];
+const PERMS = {
+  'order.create': ['client'], 'order.cancel': ['client'], 'order.confirm': ['client'], 'estimate.approve': ['client'], 'estimate.decline': ['client'],
+  'order.pay': ['client'], 'order.rate': ['client'], 'car.add': ['client'], 'client.update': ['client'],
+  'act.accept': ['client', 'sto'], 'chat.send': ['client', 'sto', 'concierge', ...STAFF],
+  'offer.send': ['sto'], 'offer.withdraw': ['sto'], 'sto.intakeSelf': ['sto'], 'sto.diagnosis': ['sto'], 'sto.stage': ['sto'], 'estimate.send': ['sto'], 'sto.selfHandover': ['sto'],
+  'sto.update': ['sto'], 'act.create': ['concierge', 'sto'],
+  'concierge.shift': ['concierge'], 'concierge.type': ['concierge'], 'concierge.loc': ['concierge'], 'concierge.update': ['concierge'], 'job.take': ['concierge'], 'trip.step': ['concierge'], 'fine.dispute': ['concierge'],
+  'concierge.assign': STAFF, 'concierge.reassign': STAFF,
+  'sos.create': ['client', 'concierge'], 'sos.cancel': ['client'], 'sos.step': STAFF,
+  'dispute.open': ['client', 'sto', ...STAFF], 'dispute.take': STAFF, 'dispute.request': STAFF, 'dispute.chat': STAFF, 'dispute.propose': STAFF,
+  'dispute.approve': ['director'], 'dispute.reject': ['director'], 'fine.remove': STAFF, 'order.nudge': STAFF, 'handover.note': STAFF, 'handover.submit': STAFF,
+  'notif.read': ['client', 'sto', 'concierge', ...STAFF]
+};
+// СТО может работать с чужой (ещё не выбранной) заявкой только через эти действия
+const STO_OPEN_ORDER = new Set(['offer.send', 'offer.withdraw']);
+
+function guard(S, a, type, p) {
+  const allowed = PERMS[type];
+  if (!allowed) fail('Неизвестное действие: ' + type);
+  if (!allowed.includes(a.role)) fail('Это действие недоступно для вашей роли');
+  if (a.role === 'client' && !S.clients[a.id]) fail('Профиль клиентки не найден');
+  if (a.role === 'sto' && !S.stos[a.id]) fail('Профиль СТО не найден');
+  if (a.role === 'concierge' && !S.concierges[a.id]) fail('Профиль консьержа не найден');
+  if (p.orderId == null || STAFF.includes(a.role)) return;
+  const o = getOrder(S, p.orderId);
+  if (a.role === 'client' && o.clientId !== a.id) fail('Чужой заказ');
+  if (a.role === 'sto' && !STO_OPEN_ORDER.has(type) && o.stoId !== a.id) fail('Чужой заказ');
+  if (a.role === 'concierge' && type !== 'job.take' && type !== 'sos.create' && activeConciergeOf(o) !== a.id
+      && !((o.pickup && o.pickup.conciergeId === a.id) || (o.ret && o.ret.conciergeId === a.id))) fail('Это не ваш заказ');
+}
+
 export function apply(S, actor, type, p = {}, now = Date.now()) {
   const ctx = { now, out: [], result: null };
-  const A = ACTIONS[type];
-  if (!A) fail('Неизвестное действие: ' + type);
-  A(S, actor, p, ctx);
+  guard(S, actor, type, p || {});
+  ACTIONS[type](S, actor, p, ctx);
   S.seq++;
   return ctx;
 }
+
+// ---------------------------------------------------------------- профили зарегистрированных пользователей
+const str = (v, max = 120) => String(v == null ? '' : v).trim().slice(0, max);
+const initialsOf = (name) => name.replace(/[«»"']/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?';
+const shortOf = (name) => { const [f, l] = name.split(/\s+/); return l ? `${f} ${l[0]}.` : f; };
+const MINSK = { lng: 27.5615, lat: 53.9023 };
+
+// Создаёт профиль при первом входе. meta — данные, которые пользователь указал при регистрации.
+// Возвращает true, если профиль создан.
+export function ensureProfile(S, who, meta = {}, now = Date.now()) {
+  S.staff = S.staff || {};
+  const name = str(meta.name) || str(meta.email).split('@')[0] || 'Пользователь';
+  const phone = str(meta.phone, 40);
+  if (who.role === 'client') {
+    if (S.clients[who.id]) return false;
+    S.clients[who.id] = { id: who.id, name, short: shortOf(name), phone, email: str(meta.email), address: str(meta.address, 200), district: str(meta.district, 60),
+      lng: +meta.lng || MINSK.lng, lat: +meta.lat || MINSK.lat, plan: 'basic', cars: [], createdAt: now };
+    return true;
+  }
+  if (who.role === 'sto') {
+    if (S.stos[who.id]) return false;
+    const title = str(meta.stoName) || name;
+    S.stos[who.id] = { id: who.id, name: title, initials: initialsOf(title), contact: name, phone, email: str(meta.email), address: str(meta.address, 200),
+      lng: +meta.lng || MINSK.lng, lat: +meta.lat || MINSK.lat, rating: null, orders: 0, hint: str(meta.hint, 300), brand: '', createdAt: now };
+    return true;
+  }
+  if (who.role === 'concierge') {
+    if (S.concierges[who.id]) return false;
+    S.concierges[who.id] = { id: who.id, name: name.split(/\s+/)[0], full: name, phone, email: str(meta.email), car: str(meta.car, 80), rating: null, trips: 0,
+      onShift: false, type: 'partner', lng: MINSK.lng, lat: MINSK.lat, fines: [], lateMin: 0, createdAt: now };
+    return true;
+  }
+  if (STAFF.includes(who.role)) {
+    if (S.staff[who.id]) return false;
+    S.staff[who.id] = { id: who.id, role: who.role, name, email: str(meta.email), createdAt: now };
+    return true;
+  }
+  return false;
+}
+export function staffName(S, a) { return (S.staff && S.staff[a.id] && S.staff[a.id].name) || (a.role === 'director' ? 'директор' : 'диспетчер'); }
 
 const ACTIONS = {
   // ======================== КЛИЕНТКА ========================
@@ -111,10 +181,10 @@ const ACTIONS = {
       slot: p.slot || 'Сегодня, 18:00–20:00', urgent: !!p.urgent, createdAt: ctx.now, updatedAt: ctx.now, status: 'published', priceMin: pmin, priceMax: pmax,
       offers: [], stoId: null, price: null, stage: 0, stageTs: null, diagnosis: '', estimate: { items: [], total: 0, status: 'none' },
       pickup: null, ret: null, acts: {}, chat: [], paid: false, rating: null, refund: 0, frozen: false, disputeId: null,
-      delivery: 'concierge', comment: '', address: c.address, lng: c.lng, lat: c.lat, bot: { paused: false, next: ctx.now + BOT.offer }, log: []
+      delivery: 'concierge', comment: '', address: c.address, lng: c.lng, lat: c.lat, log: []
     };
     log(S.orders[id], ctx, 'Заявка опубликована');
-    Object.values(S.stos).filter((s) => !s.bot).forEach((s) => notify(S, ctx, toSto(s.id), { cat: 'req', ico: 'req', title: 'Новая заявка · ' + car.make,
+    Object.values(S.stos).forEach((s) => notify(S, ctx, toSto(s.id), { cat: 'req', ico: 'req', title: 'Новая заявка · ' + car.make,
       text: `${tags[0] || text.slice(0, 40)} · р-н ${c.district}, ${km(c, s)} км`, link: { view: 'marketplace', orderId: id }, sound: true }));
     ctx.result = { orderId: id };
   },
@@ -142,11 +212,10 @@ const ACTIONS = {
     o.stage = 0; o.stageTs = ctx.now;
     if (o.delivery === 'concierge') o.pickup = { conciergeId: null, step: 0, ts: ctx.now, progress: 0 };
     log(o, ctx, `Клиентка выбрала ${stoName(S, o.stoId)} — ${o.price} Br · ${o.delivery === 'self' ? 'привезёт сама' : 'с консьержем'}`);
-    botAt(o, ctx, BOT.step);
     notify(S, ctx, toSto(o.stoId), { ico: 'order', title: 'Клиентка выбрала ваше предложение', text: `Заявка №${o.id} · ${o.car} · ${o.price} Br. ${o.delivery === 'self' ? 'Клиентка привезёт машину сама' : 'Консьерж заберёт машину'} · ${o.slot}`, link: { view: 'job', orderId: o.id }, sound: true });
-    o.offers.filter((x) => x.stoId !== o.stoId && !S.stos[x.stoId].bot).forEach((x) => notify(S, ctx, toSto(x.stoId), { ico: 'req', title: 'Клиентка выбрала другую СТО', text: `Заявка №${o.id} · ${o.car}` }));
+    o.offers.filter((x) => x.stoId !== o.stoId).forEach((x) => notify(S, ctx, toSto(x.stoId), { ico: 'req', title: 'Клиентка выбрала другую СТО', text: `Заявка №${o.id} · ${o.car}` }));
     if (o.delivery === 'concierge') {
-      Object.values(S.concierges).filter((k) => !k.bot && k.onShift).forEach((k) => notify(S, ctx, toK(k.id), { title: 'Новый заказ в ленте', text: `Забор · ${o.car} · ${o.slot}`, link: { view: 'feed' }, sound: true }));
+      Object.values(S.concierges).filter((k) => k.onShift).forEach((k) => notify(S, ctx, toK(k.id), { title: 'Новый заказ в ленте', text: `Забор · ${o.car} · ${o.slot}`, link: { view: 'feed' }, sound: true }));
       notify(S, ctx, toDisp, { ico: 'late', title: `Заказ №${o.id} ждёт консьержа`, text: `${o.car} · ${o.address} · ${o.slot}`, link: { view: 'concierges' } });
     }
     notify(S, ctx, toClient(o), { cat: 'order', ico: 'order', title: 'Заявка подтверждена', text: `${stoName(S, o.stoId)} · ${o.price} Br. ${o.delivery === 'self' ? 'Ждём вас на СТО · ' + o.slot : 'Ищем автоконсьержа на ' + o.slot}`, link: { view: 'status' } });
@@ -163,7 +232,6 @@ const ACTIONS = {
     o.estimate.status = 'approved'; o.estimate.approvedTs = ctx.now;
     o.stage = 3; o.stageTs = ctx.now;
     log(o, ctx, `Смета ${o.estimate.total} Br одобрена клиенткой`);
-    botAt(o, ctx, BOT.stoStage);
     notify(S, ctx, toSto(o.stoId), { ico: 'order', title: 'Смета одобрена', text: `Заявка №${o.id} · ${o.car} · ${o.estimate.total} Br. Можно начинать ремонт`, link: { view: 'job', orderId: o.id }, sound: true });
   },
 
@@ -179,16 +247,14 @@ const ACTIONS = {
     const o = getOrder(S, p.orderId);
     const act = o.acts[p.n] || fail('Акта нет');
     if (act.status !== 'pending') fail('Акт уже обработан');
-    if ((p.n == 1 || p.n == 4) && a.role !== 'client' && a.role !== 'system') fail('Акт подтверждает клиентка');
-    if (p.n == 2 && a.role !== 'sto' && a.role !== 'system') fail('Акт №2 подтверждает СТО');
+    if ((p.n == 1 || p.n == 4) && a.role !== 'client') fail('Акт подтверждает клиентка');
+    if (p.n == 2 && a.role !== 'sto') fail('Акт №2 подтверждает СТО');
     act.status = 'accepted'; act.acceptedTs = ctx.now;
     log(o, ctx, `Акт №${p.n} подтверждён`);
     if (p.n == 2) {
-      botAt(o, ctx, BOT.stoStage);
       if (o.pickup && o.pickup.conciergeId) notify(S, ctx, toK(o.pickup.conciergeId), { title: 'СТО подтвердила приёмку', text: `Акт №2 · заказ №${o.id}` });
       notify(S, ctx, toClient(o), { cat: 'concierge', ico: 'doc', title: 'Машина принята в сервисе', text: `${stoName(S, o.stoId)} подтвердил акт приёмки №2.`, link: { view: 'inspect', orderId: o.id, n: 2 } });
     }
-    if (p.n == 4) { botAt(o, ctx, BOT.pay); }
   },
 
   'order.pay'(S, a, p, ctx) {
@@ -238,7 +304,6 @@ const ACTIONS = {
     if (a.role !== 'concierge' && kid) notify(S, ctx, toK(kid), { title: 'Сообщение по заказу №' + o.id, text: `${name}: «${short}»`, link: { view: 'trip' } });
     // клиентка-бот отвечает, чтобы переписка выглядела живой
     const cl = S.clients[o.clientId];
-    if (cl && cl.bot && a.role !== 'client') o.bot.reply = ctx.now + 4000;
   },
 
   // ======================== СТО ========================
@@ -252,7 +317,6 @@ const ACTIONS = {
     const off = { id: S.nextOffer++, stoId: a.id, price, items, note: p.note || '', ts: ctx.now };
     o.offers.push(off); o.updatedAt = ctx.now;
     log(o, ctx, `${stoName(S, a.id)} предложила ${price} Br`);
-    if (S.clients[o.clientId] && S.clients[o.clientId].bot) botAt(o, ctx, BOT.choose);
     notify(S, ctx, toClient(o), { cat: 'order', ico: 'order', title: `Новое предложение: ${price} Br`, text: `${stoName(S, a.id)} ответил на заявку №${o.id}${p.note ? ' · ' + p.note : ''}`, link: { view: 'offers', orderId: o.id } });
     ctx.result = off;
   },
@@ -264,12 +328,11 @@ const ACTIONS = {
 
   'sto.intakeSelf'(S, a, p, ctx) { // клиентка привезла машину сама
     const o = getOrder(S, p.orderId);
-    if (o.stoId !== a.id && a.role !== 'system') fail('Чужой заказ');
+    if (o.stoId !== a.id) fail('Чужой заказ');
     if (o.delivery !== 'self' || o.status !== 'confirmed') fail('Приёмка недоступна');
     o.status = 'at_sto';
     makeAct(S, o, 2, a.id, ctx, p).status = 'accepted';
     log(o, ctx, 'Машина принята на СТО (клиентка привезла сама)');
-    botAt(o, ctx, BOT.stoStage);
     notify(S, ctx, toClient(o), { cat: 'order', ico: 'doc', title: 'Машина принята в сервисе', text: `${stoName(S, o.stoId)} · акт приёмки №2`, link: { view: 'status' } });
   },
 
@@ -301,11 +364,10 @@ const ACTIONS = {
       if (o.delivery === 'concierge') {
         const prev = o.pickup && o.pickup.conciergeId;
         o.ret = { conciergeId: null, step: 0, ts: ctx.now, progress: 0, prefer: prev };
-        Object.values(S.concierges).filter((k) => !k.bot && k.onShift).forEach((k) => notify(S, ctx, toK(k.id), { title: 'Новый заказ в ленте', text: `Возврат · ${o.car} · ${stoName(S, o.stoId)}`, link: { view: 'feed' }, sound: true }));
+        Object.values(S.concierges).filter((k) => k.onShift).forEach((k) => notify(S, ctx, toK(k.id), { title: 'Новый заказ в ленте', text: `Возврат · ${o.car} · ${stoName(S, o.stoId)}`, link: { view: 'feed' }, sound: true }));
         notify(S, ctx, toDisp, { ico: 'late', title: `Заказ №${o.id} ждёт консьержа на возврат`, text: `${o.car} · ${stoName(S, o.stoId)} → ${o.address}`, link: { view: 'concierges' } });
       }
     }
-    botAt(o, ctx, to === 4 ? BOT.step : BOT.stoStage);
   },
 
   'estimate.send'(S, a, p, ctx) {
@@ -315,7 +377,6 @@ const ACTIONS = {
     if (!items.length) fail('Добавьте позиции сметы');
     o.estimate = { items, total: items.reduce((s, x) => s + x.price, 0), status: 'sent', ts: ctx.now, alternatives: p.alternatives || null };
     log(o, ctx, `Смета ${o.estimate.total} Br отправлена клиентке`);
-    botAt(o, ctx, BOT.approve);
     notify(S, ctx, toClient(o), { cat: 'order', ico: 'order', title: 'Смета на согласование', text: `${stoName(S, o.stoId)}: ${o.estimate.total} Br · ${items.map((x) => x.name).join(', ').slice(0, 80)}`, link: { view: 'status' } });
   },
 
@@ -345,17 +406,15 @@ const ACTIONS = {
       o.pickup.step = 6; o.pickup.ts = ctx.now; o.status = 'at_sto'; o.stage = 0; o.stageTs = ctx.now;
       payConcierge(S, o, a.id, 'pickup', ctx);
       log(o, ctx, 'Машина передана в СТО, акт №2 ждёт подтверждения станции');
-      botAt(o, ctx, BOT.step);
       notify(S, ctx, toSto(o.stoId), { ico: 'camera', title: 'Приёмка: проверьте акт №2', text: `${kName(S, a.id)} передал ${o.car} · заявка №${o.id}`, link: { view: 'job', orderId: o.id }, sound: true });
       notify(S, ctx, toClient(o), { cat: 'concierge', ico: 'concierge', title: 'Машина в сервисе', text: `${kName(S, a.id)} передал машину мастеру. Трансляция геопозиции завершена.`, link: { view: 'status' } });
     } else if (n === 3) {
-      if (a.role !== 'sto' && a.role !== 'system') fail('Акт №3 подписывает СТО');
+      if (a.role !== 'sto') fail('Акт №3 подписывает СТО');
       if (!o.ret || !o.ret.conciergeId) fail('Консьерж ещё не назначен на возврат');
       if (o.ret.step < 2) fail('Консьерж ещё не приехал в СТО');
       makeAct(S, o, 3, o.stoId, ctx, p).status = 'accepted';
       o.ret.step = 3; o.ret.ts = ctx.now; o.ret.progress = 0;
       log(o, ctx, 'Акт №3 подписан, машина выдана консьержу');
-      botAt(o, ctx, BOT.step);
       notify(S, ctx, toK(o.ret.conciergeId), { title: 'СТО выдала машину', text: `Акт №3 подписан · везите ${o.car} клиентке`, link: { view: 'trip' } });
       notify(S, ctx, toClient(o), { cat: 'concierge', ico: 'concierge', title: `${kName(S, o.ret.conciergeId)} везёт машину к вам`, text: 'Следите на карте в статусе заказа.', link: { view: 'status' } });
     } else if (n === 4) {
@@ -365,7 +424,6 @@ const ACTIONS = {
       o.ret.step = 5; o.ret.ts = ctx.now; o.status = 'returned';
       payConcierge(S, o, a.id, 'ret', ctx);
       log(o, ctx, 'Машина возвращена клиентке, акт №4 ждёт проверки');
-      botAt(o, ctx, BOT.pay);
       notify(S, ctx, toClient(o), { cat: 'concierge', ico: 'doc', title: 'Машина возвращена — проверьте акт №4', text: 'Сравните с актом при заборе и оплатите заказ.', link: { view: 'compare', orderId: o.id } });
       notify(S, ctx, toSto(o.stoId), { ico: 'concierge', title: 'Машина у клиентки', text: `Заявка №${o.id} · ждём оплату`, link: { view: 'job', orderId: o.id } });
     } else fail('Неизвестный акт');
@@ -395,10 +453,9 @@ const ACTIONS = {
     S.ledger.unshift({ id: 'l' + ctx.now, k: k.id, ts: ctx.now, text: `опоздание ${k.lateMin || 21} мин, штраф 50% · №${o.id}`, sum: -CONCIERGE_FEE * 0.5 });
     k.lateMin = 0; o.late = null;
     o[leg].conciergeId = free.id; o[leg].step = Math.min(o[leg].step, 1); o[leg].ts = ctx.now; o[leg].progress = 0;
-    o.bot.paused = false; botAt(o, ctx, BOT.step);
     log(o, ctx, `Диспетчер передал заказ: ${free.name} вместо ${k.name}`);
     notify(S, ctx, toK(k.id), { title: 'Заказ передан другому консьержу', text: `№${o.id} · штраф за опоздание ${CONCIERGE_FEE * 0.5} Br`, link: { view: 'money' } });
-    if (!free.bot) notify(S, ctx, toK(free.id), { title: 'Диспетчер назначил вам заказ', text: `№${o.id} · ${o.car}`, link: { view: 'trip' }, sound: true });
+    notify(S, ctx, toK(free.id), { title: 'Диспетчер назначил вам заказ', text: `№${o.id} · ${o.car}`, link: { view: 'trip' }, sound: true });
     notify(S, ctx, toClient(o), { cat: 'concierge', ico: 'concierge', title: 'Консьерж заменён', text: `К вам едет ${free.name} · ${free.car} · ${free.rating} ★`, link: { view: 'status' } });
     ctx.result = { to: free.name };
   },
@@ -406,7 +463,7 @@ const ACTIONS = {
     const o = getOrder(S, p.orderId);
     const leg = p.leg === 'ret' ? 'ret' : 'pickup';
     const L = o[leg] || fail('Нет поездки');
-    if (L.conciergeId !== a.id && a.role !== 'system') fail('Это не ваш заказ');
+    if (L.conciergeId !== a.id) fail('Это не ваш заказ');
     const k = S.concierges[L.conciergeId];
     if (leg === 'pickup') {
       if (![0, 1, 2, 4].includes(L.step)) fail('Сейчас нужно заполнить акт');
@@ -422,9 +479,8 @@ const ACTIONS = {
     if (leg === 'pickup' && L.step === 1) { o.late = null; k.lateMin = 0; notify(S, ctx, toClient(o), { cat: 'concierge', ico: 'concierge', title: `${k.name} выехал к вам`, text: `${k.car} · ${k.rating} ★. Следите на карте.`, link: { view: 'status' } }); }
     if (leg === 'pickup' && L.step === 2) notify(S, ctx, toClient(o), { cat: 'concierge', ico: 'concierge', title: 'Автоконсьерж прибыл', text: `${k.name} у подъезда: ${o.address}. ${k.car}.`, link: { view: 'status' }, sound: true });
     if (leg === 'pickup' && L.step === 5) notify(S, ctx, toSto(o.stoId), { ico: 'concierge', title: 'Консьерж приехал', text: `${k.name} · ${o.car} · заявка №${o.id}. Ждёт приёмку.`, link: { view: 'job', orderId: o.id }, sound: true });
-    if (leg === 'ret' && L.step === 2) { notify(S, ctx, toSto(o.stoId), { ico: 'concierge', title: 'Консьерж приехал за машиной', text: `${k.name} · заявка №${o.id}. Заполните акт выдачи №3.`, link: { view: 'job', orderId: o.id }, sound: true }); botAt(o, ctx, BOT.step); }
+    if (leg === 'ret' && L.step === 2) { notify(S, ctx, toSto(o.stoId), { ico: 'concierge', title: 'Консьерж приехал за машиной', text: `${k.name} · заявка №${o.id}. Заполните акт выдачи №3.`, link: { view: 'job', orderId: o.id }, sound: true }); }
     if (leg === 'ret' && L.step === 4) notify(S, ctx, toClient(o), { cat: 'concierge', ico: 'concierge', title: `${k.name} привёз машину`, text: 'Встречайте у подъезда, он заполнит акт возврата.', link: { view: 'status' }, sound: true });
-    botAt(o, ctx, BOT.step);
   },
   'fine.dispute'(S, a, p, ctx) {
     const k = S.concierges[a.id];
@@ -452,6 +508,7 @@ const ACTIONS = {
   },
   'sos.cancel'(S, a, p, ctx) {
     const s = S.sos.find((x) => x.id === p.id) || fail('Вызов не найден');
+    if (s.clientId !== a.id) fail('Чужой вызов');
     if (s.step >= 4) return;
     s.step = 4; s.cancelled = true; s.log.push({ ts: ctx.now, x: 'Клиентка отменила вызов' });
     notify(S, ctx, toDisp, { ico: 'ok', title: `Вызов ${s.id} отменён клиенткой`, text: s.scenario, link: { view: 'sos' } });
@@ -494,7 +551,7 @@ const ACTIONS = {
   'dispute.take'(S, a, p, ctx) {
     const d = S.disputes[p.id] || fail('Спор не найден');
     d.takenTs = ctx.now; d.status = 'open';
-    d.log.push({ ts: ctx.now, x: `Диспетчер ${p.by || 'Ольга К.'} взяла спор в работу (через ${Math.round((ctx.now - d.ts) / 60000)} мин)` });
+    d.log.push({ ts: ctx.now, x: `${staffName(S, a)} взял(а) спор в работу (через ${Math.round((ctx.now - d.ts) / 60000)} мин)` });
     const o = S.orders[d.order];
     if (o && S.clients[o.clientId]) notify(S, ctx, toClient(o), { cat: 'order', ico: 'alert', title: `Спор ${d.id} в работе`, text: 'Диспетчер рассматривает претензию. Решение — до 3 суток.', link: { view: 'status' } });
   },
@@ -523,7 +580,7 @@ const ACTIONS = {
     if (!p.reason) fail('Добавьте обоснование решения');
     const DEC = DECISIONS;
     if (k === 'partial' || k === 'full') {
-      d.status = 'approval'; d.proposal = { decision: k, amount, reason: p.reason, by: p.by || 'Ольга К.' };
+      d.status = 'approval'; d.proposal = { decision: k, amount, reason: p.reason, by: staffName(S, a) };
       d.log.push({ ts: ctx.now, x: `Предложен ${DEC[k].toLowerCase()} ${amount} Br → директору на утверждение` });
       notify(S, ctx, toDir, { ico: 'ok', title: `Возврат на утверждение: ${d.id}`, text: `${DEC[k]} ${amount} Br`, link: { view: 'approvals' }, sound: true });
     } else {
@@ -550,17 +607,26 @@ const ACTIONS = {
   },
   'order.nudge'(S, a, p, ctx) {
     const o = getOrder(S, p.orderId);
-    o.bot.paused = false; botAt(o, ctx, 2500);
     chatPush(S, o, ctx, 'dispatcher', 'Диспетчер', p.text || 'Заказ завис — пожалуйста, ответьте, что мешает продолжить.');
     if (S.clients[o.clientId]) notify(S, ctx, toClient(o), { cat: 'chat', ico: 'chat', title: 'Сообщение диспетчера', text: 'Заказ №' + o.id + ': проверьте смету и статус', link: { view: 'status' } });
     if (o.stoId) notify(S, ctx, toSto(o.stoId), { ico: 'chat', title: 'Диспетчер: заказ завис', text: `№${o.id} · ${o.car}`, link: { view: 'job', orderId: o.id } });
   },
   'handover.note'(S, a, p, ctx) { S.handoverNotes[p.key] = String(p.text || ''); },
-  'handover.submit'(S, a, p, ctx) { notify(S, ctx, toDisp, { ico: 'ok', title: 'Смена передана', text: `${p.from || 'Ольга К.'} → ${p.to || 'Андрей М.'} · ${p.count || 0} открытых пунктов`, link: { view: 'handover' } }); },
+  'handover.submit'(S, a, p, ctx) { notify(S, ctx, toDisp, { ico: 'ok', title: 'Смена передана', text: `${staffName(S, a)} → ${p.to || 'следующая смена'} · ${p.count || 0} открытых пунктов`, link: { view: 'handover' } }); },
   'notif.read'(S, a, p, ctx) {
     S.notifications.forEach((n) => { if ((p.all || n.id === p.id) && matchTo(n.to, a)) n.read = true; });
   },
-  'demo.reset'() { /* обрабатывается сервером */ }
+  'sto.update'(S, a, p, ctx) {
+    const s = S.stos[a.id];
+    ['name', 'phone', 'address', 'hint', 'brand'].forEach((k) => { if (p[k] != null) s[k] = str(p[k], 300); });
+    if (p.name) s.initials = initialsOf(s.name);
+    if (p.lng && p.lat) { s.lng = +p.lng; s.lat = +p.lat; }
+  },
+  'concierge.update'(S, a, p, ctx) {
+    const k = S.concierges[a.id];
+    if (p.full) { k.full = str(p.full); k.name = k.full.split(/\s+/)[0]; }
+    ['phone', 'car'].forEach((x) => { if (p[x] != null) k[x] = str(p[x], 80); });
+  }
 };
 
 export const DECISIONS = { refuse: 'Отказ в претензии', partial: 'Частичный возврат', full: 'Полный возврат', rework: 'Бесплатная доработка на СТО', insurance: 'Страховой случай (ущерб от консьержа)' };
@@ -608,127 +674,10 @@ function takeJob(S, orderId, leg, kid, ctx, by) {
   if (busy(S, kid)) fail('Сначала завершите текущий заказ');
   L.conciergeId = kid; L.step = 0; L.ts = ctx.now; L.progress = 0; L.assignedBy = by;
   log(o, ctx, `${k.name} взял ${leg === 'pickup' ? 'забор' : 'возврат'}${by === 'dispatcher' ? ' (назначил диспетчер)' : ''}`);
-  botAt(o, ctx, BOT.step);
   notify(S, ctx, toClient(o), { cat: 'concierge', ico: 'concierge', title: leg === 'pickup' ? 'Автоконсьерж назначен' : 'Консьерж вернёт машину', text: `${k.name} · ${k.car} · ${k.rating} ★ · ${o.slot}`, link: { view: 'status' } });
-  if (by === 'dispatcher' && !k.bot) notify(S, ctx, toK(kid), { title: 'Диспетчер назначил вам заказ', text: `№${o.id} · ${leg === 'pickup' ? 'забор' : 'возврат'} · ${o.car}`, link: { view: 'trip' }, sound: true });
+  if (by === 'dispatcher') notify(S, ctx, toK(kid), { title: 'Диспетчер назначил вам заказ', text: `№${o.id} · ${leg === 'pickup' ? 'забор' : 'возврат'} · ${o.car}`, link: { view: 'trip' }, sound: true });
   if (o.stoId) notify(S, ctx, toSto(o.stoId), { ico: 'concierge', title: `Консьерж назначен · №${o.id}`, text: `${k.name} · ${leg === 'pickup' ? 'привезёт машину' : 'заберёт машину у вас'}`, link: { view: 'job', orderId: o.id } });
   ctx.result = { orderId: o.id, leg };
-}
-
-// ---------------------------------------------------------------- боты (демо)
-// Двигают заказы там, где участник — не живой пользователь приложения.
-export function tick(S, now = Date.now()) {
-  const ctx = { now, out: [], result: null, loc: [], events: [] };
-  let changed = false;
-  const sys = { role: 'system', id: 'bot' };
-  const run = (type, actor, p) => { try { ACTIONS[type](S, actor, p, ctx); changed = true; ctx.events.push({ who: actor, type, p }); return true; } catch (e) { if (!(e instanceof DomainError)) throw e; return false; } };
-
-  // демо-события: новая заявка в ленте СТО и новый SOS
-  if (S.demo.spawnRequestAt && now >= S.demo.spawnRequestAt) {
-    S.demo.spawnRequestAt = 0;
-    const id = String(S.nextOrder++).padStart(4, '0');
-    const c = S.clients.c6;
-    S.orders[id] = { id, clientId: 'c6', car: 'Mazda 3, 2018', plate: '2211 ОН-7', gear: 'АКПП', symptom: 'Вибрация руля на скорости выше 80 км/ч.', tags: ['Вибрация при движении'],
-      slot: 'Сегодня, 16:00–18:00', urgent: false, createdAt: now, updatedAt: now, status: 'published', priceMin: 60, priceMax: 160, offers: [], stoId: null, price: null, stage: 0, stageTs: null,
-      diagnosis: '', estimate: { items: [], total: 0, status: 'none' }, pickup: null, ret: null, acts: {}, chat: [], paid: false, rating: null, refund: 0, frozen: false, disputeId: null,
-      delivery: 'concierge', comment: '', address: c.address, lng: c.lng, lat: c.lat, bot: { paused: false, next: now + BOT.offer }, log: [{ ts: now, x: 'Заявка опубликована' }] };
-    notify(S, ctx, toSto(STO_ME), { cat: 'req', ico: 'req', title: 'Новая заявка · Mazda 3, 2018', text: `Вибрация при движении · р-н ${c.district}, ${km(c, S.stos[STO_ME])} км`, link: { view: 'marketplace', orderId: id }, sound: true });
-    changed = true;
-  }
-  if (S.demo.spawnSosAt && now >= S.demo.spawnSosAt) {
-    S.demo.spawnSosAt = 0;
-    S.sos.unshift({ id: 'S-' + (S.nextSos++), clientId: null, client: 'Ксения Б.', phone: '+375 33 640-18-02', car: 'Volkswagen Golf, 2016 · 4521 ММ-7', scenario: 'ДТП', place: 'пр-т Дзержинского, 104 · точность 9 м', plan: 'Максимальный', ts: now, step: 0, log: [], source: 'client' });
-    notify(S, ctx, toDisp, { ico: 'sos', title: 'SOS · ДТП · Ксения Б.', text: 'пр-т Дзержинского, 104', link: { view: 'sos' }, sound: true, urgent: true });
-    changed = true;
-  }
-
-  for (const o of Object.values(S.orders)) {
-    if (['closed', 'cancelled'].includes(o.status)) continue;
-    const cl = S.clients[o.clientId] || {};
-    // ответ клиентки-бота в чате
-    if (o.bot.reply && now >= o.bot.reply) { o.bot.reply = 0; chatPush(S, o, ctx, 'client', cl.name, 'Спасибо, поняла! Держите в курсе.'); changed = true; }
-
-    // поездки ботов-консьержей: двигаем машинку по маршруту
-    for (const leg of ['pickup', 'ret']) {
-      const L = o[leg]; if (!L || !L.conciergeId) continue;
-      const k = S.concierges[L.conciergeId]; if (!k || !k.bot || o.bot.paused) continue;
-      const driving = leg === 'pickup' ? (L.step === 1 || L.step === 4) : (L.step === 1 || L.step === 3);
-      if (driving && L.progress < 1) {
-        L.progress = Math.min(1, L.progress + 1000 / BOT.drive);
-        ctx.loc.push({ orderId: o.id, leg, step: L.step, progress: L.progress, conciergeId: k.id });
-      }
-    }
-
-    if (o.bot.paused || !o.bot.next || now < o.bot.next) continue;
-    o.bot.next = 0;
-    const sto = S.stos[o.stoId];
-
-    if (o.status === 'published') {
-      // СТО-боты отвечают на заявки живой клиентки
-      if (!cl.bot) {
-        const bots = Object.values(S.stos).filter((s) => s.bot && !o.offers.some((x) => x.stoId === s.id));
-        if (bots.length) {
-          const s = bots[0];
-          const [mn, mx] = o.priceMin ? [o.priceMin, o.priceMax] : priceRange(o.tags);
-          const price = R((mn + (mx - mn) * s.f) / 5) * 5;
-          const w = TAG_WORK[o.tags[0]] || ['Запчасти и материалы', 'Диагностика и работа'];
-          const parts = R(price * 0.62);
-          const notes = { sto2: 'Готовы принять сегодня в 20:00', sto3: 'Готовы принять завтра утром', sto4: 'Готовы принять завтра днём' };
-          run('offer.send', { role: 'sto', id: s.id }, { orderId: o.id, price, items: [{ name: `${w[0]} (${s.brand})`, price: parts }, { name: w[1], price: price - parts }], note: notes[s.id] || '' });
-          o.bot.next = now + BOT.offer;
-        }
-      } else {
-        // клиентка-бот выбирает предложение живой СТО
-        const mine = o.offers.find((x) => !S.stos[x.stoId].bot) || o.offers[0];
-        if (mine) run('order.confirm', { role: 'system', id: 'bot' }, { orderId: o.id, offerId: mine.id, delivery: 'concierge' });
-      }
-      continue;
-    }
-
-    // консьерж-бот: шаги поездки и акты
-    for (const leg of ['pickup', 'ret']) {
-      const L = o[leg]; if (!L || !L.conciergeId) continue;
-      const k = S.concierges[L.conciergeId]; if (!k.bot) continue;
-      const kA = { role: 'concierge', id: k.id };
-      if (leg === 'pickup' && L.step < 6) {
-        if ((L.step === 1 || L.step === 4) && L.progress < 1) { o.bot.next = now + 1000; break; }
-        if (L.step === 3) run('act.create', kA, { orderId: o.id, n: 1, photos: 12, fuel: '1/2' });
-        else if (L.step === 5) run('act.create', kA, { orderId: o.id, n: 2, photos: 12 });
-        else run('trip.step', kA, { orderId: o.id, leg });
-        o.bot.next = now + BOT.step; break;
-      }
-      if (leg === 'ret' && L.step < 5) {
-        if ((L.step === 1 || L.step === 3) && L.progress < 1) { o.bot.next = now + 1000; break; }
-        if (L.step === 2) { if (sto.bot) run('act.create', sys, { orderId: o.id, n: 3, photos: 12 }); }
-        else if (L.step === 4) run('act.create', kA, { orderId: o.id, n: 4, photos: 12 });
-        else run('trip.step', kA, { orderId: o.id, leg });
-        o.bot.next = now + BOT.step; break;
-      }
-    }
-
-    // клиентка-бот: подтверждает акты, смету и платит
-    if (cl.bot) {
-      if (o.acts[1] && o.acts[1].status === 'pending') run('act.accept', sys, { orderId: o.id, n: 1 });
-      if (o.estimate.status === 'sent') run('estimate.approve', sys, { orderId: o.id });
-      if (o.status === 'returned' && !o.frozen) { run('order.pay', sys, { orderId: o.id }); run('order.rate', sys, { orderId: o.id, stars: 5, comment: 'Всё быстро, спасибо!' }); }
-    }
-
-    // СТО-бот: приёмка, стадии, смета, выдача
-    if (sto && sto.bot) {
-      if (o.status === 'confirmed' && o.delivery === 'self') run('sto.intakeSelf', { role: 'sto', id: sto.id }, { orderId: o.id });
-      else if (o.status === 'at_sto') {
-        if (o.acts[2] && o.acts[2].status === 'pending') run('act.accept', sys, { orderId: o.id, n: 2 });
-        else if (o.stage === 0 || o.stage === 1) run('sto.stage', { role: 'sto', id: sto.id }, { orderId: o.id, to: o.stage + 1, diagnosis: o.stage === 1 ? `Проверили: ${o.symptom.toLowerCase()} Нужна замена, смета ниже.` : undefined });
-        else if (o.stage === 2 && o.estimate.status !== 'sent' && o.estimate.status !== 'approved') {
-          const items = o.estimate.items.length ? o.estimate.items : [{ name: 'Работа', price: o.price || 100 }];
-          run('estimate.send', { role: 'sto', id: sto.id }, { orderId: o.id, items: items.concat([{ name: 'Диагностика', price: 0 }]) });
-        } else if (o.stage === 3) run('sto.stage', { role: 'sto', id: sto.id }, { orderId: o.id, to: 4 });
-      } else if (o.status === 'ready' && o.delivery === 'self' && cl.bot) run('sto.selfHandover', { role: 'sto', id: sto.id }, { orderId: o.id });
-    }
-    if (!o.bot.next && (o.status !== 'closed')) o.bot.next = now + BOT.step;
-  }
-  if (changed) S.seq++;
-  return { changed, ctx };
 }
 
 // ---------------------------------------------------------------- представления
@@ -741,14 +690,28 @@ export function matchTo(to, who) {
 
 const maskClient = (o) => { o.client = null; o.phone = null; o.address = null; o.lng = o.lat = null; o.chat = []; return o; };
 
+export function profileOf(S, who) {
+  if (who.role === 'client') return S.clients[who.id] || null;
+  if (who.role === 'sto') return S.stos[who.id] || null;
+  if (who.role === 'concierge') return S.concierges[who.id] || null;
+  return (S.staff && S.staff[who.id]) || null;
+}
+
 export function viewFor(S, who) {
   const V = {
     seq: S.seq, now: Date.now(), resetAt: S.resetAt, me: who,
     consts: { CONCIERGE_FEE, COMMISSION, PAY, PICKUP_STEPS, RETURN_STEPS, STO_STAGES, KIT, DECISIONS },
-    stos: S.stos, concierges: {}, notifications: S.notifications.filter((n) => matchTo(n.to, who)).slice(0, 80)
+    stos: {}, concierges: {}, notifications: S.notifications.filter((n) => matchTo(n.to, who)).slice(0, 80),
+    profile: profileOf(S, who)
   };
+  const staff = STAFF.includes(who.role);
+  // личные контакты участников видны только им самим и сотрудникам платформы
+  for (const s of Object.values(S.stos)) {
+    V.stos[s.id] = staff || (who.role === 'sto' && who.id === s.id) ? s : Object.assign({}, s, { email: undefined, contact: undefined });
+  }
   for (const k of Object.values(S.concierges)) {
-    V.concierges[k.id] = Object.assign({}, k, { busyWith: null });
+    const own = staff || (who.role === 'concierge' && who.id === k.id);
+    V.concierges[k.id] = Object.assign({}, k, { busyWith: null }, own ? {} : { email: undefined, fines: undefined, lateMin: undefined });
   }
   for (const o of Object.values(S.orders)) { const kid = activeConciergeOf(o); if (kid && V.concierges[kid]) V.concierges[kid].busyWith = o.id; }
 
@@ -759,7 +722,6 @@ export function viewFor(S, who) {
     x.address = o.address || cl.address; x.lng = o.lng || cl.lng; x.lat = o.lat || cl.lat;
     x.stoName = o.stoId ? S.stos[o.stoId].name : null;
     x.priceMin = o.priceMin || priceRange(o.tags)[0]; x.priceMax = o.priceMax || priceRange(o.tags)[1];
-    delete x.bot;
     return x;
   };
 
