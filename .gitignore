@@ -4,4 +4,13 @@ mobile/*/www/
 mobile/*/ios/App/build/
 mobile/*/ios/App/build-device/
 .DS_Store
+Thumbs.db
 *.log
+npm-debug.log*
+.idea/
+.vscode/
+*.swp
+.env
+.env.local
+~$*.docx
+~$*.xlsx
