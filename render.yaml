@@ -1,6 +1,7 @@
 # Render.com Blueprint: Dashboard → New → Blueprint → выбрать этот репозиторий.
-# Бесплатный план: сервис засыпает после 15 минут без запросов (первый запрос ~1 мин),
-# данные сбрасываются при перезапуске. Для постоянного хранения — план starter + диск (см. ниже).
+# Бесплатный план: сервис засыпает после 15 минут без запросов (первый запрос ~1 мин).
+# Данные и аккаунты хранятся в Supabase, поэтому перезапуски их не стирают.
+# Значения SUPABASE_* Render спросит при создании Blueprint (Settings → API в Supabase).
 services:
   - type: web
     name: moy-avtomekhanik
@@ -11,10 +12,9 @@ services:
     # Деплой запускает GitHub Actions через deploy hook после зелёных тестов (см. README → «Автодеплой»).
     autoDeploy: false
     envVars:
-      - key: DB_FILE
-        value: /data/ecosystem.db
-    # Чтобы данные переживали перезапуски (только платные планы):
-    # disk:
-    #   name: data
-    #   mountPath: /data
-    #   sizeGB: 1
+      - key: SUPABASE_URL          # https://<project>.supabase.co
+        sync: false
+      - key: SUPABASE_ANON_KEY     # publishable / anon key — публичный, уходит в приложения
+        sync: false
+      - key: SUPABASE_SERVICE_KEY  # secret / service_role key — только на сервере
+        sync: false

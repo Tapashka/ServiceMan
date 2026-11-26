@@ -1,6 +1,7 @@
 # Развёртывание на своём сервере (VPS) с автоматическим HTTPS.
 #   1) DNS: A-запись вашего домена → IP сервера
-#   2) DOMAIN=ma.example.by docker compose up -d --build
+#   2) файл deploy/.env с SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY (см. README)
+#   3) DOMAIN=ma.example.by docker compose up -d --build
 services:
   app:
     build: ..
@@ -8,6 +9,9 @@ services:
     environment:
       PORT: 8080
       DB_FILE: /data/ecosystem.db
+      SUPABASE_URL: ${SUPABASE_URL:?Укажите SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?Укажите SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
     volumes:
       - ma-data:/data
   caddy:
