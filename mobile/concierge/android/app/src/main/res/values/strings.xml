@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">МА Консьерж</string>
+    <string name="title_activity_main">МА Консьерж</string>
+    <string name="package_name">by.moyavtomekhanik.concierge</string>
+    <string name="custom_url_scheme">by.moyavtomekhanik.concierge</string>
+</resources>

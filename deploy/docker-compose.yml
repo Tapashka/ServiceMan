@@ -1,0 +1,25 @@
+# Развёртывание на своём сервере (VPS) с автоматическим HTTPS.
+#   1) DNS: A-запись вашего домена → IP сервера
+#   2) DOMAIN=ma.example.by docker compose up -d --build
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      DB_FILE: /data/ecosystem.db
+    volumes:
+      - ma-data:/data
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?Укажите DOMAIN, например DOMAIN=ma.example.by}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on: [app]
+volumes:
+  ma-data:
+  caddy-data:

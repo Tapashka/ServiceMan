@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мой Автомеханик — панель диспетчера</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2430;
+    --ink-soft:#4D5769;
+    --ink-faint:#8891A0;
+    --paper:#F6F4EF;
+    --paper-dim:#ECE8DE;
+    --card:#FFFFFF;
+    --amber:#E8A33D;
+    --amber-dark:#C77F1D;
+    --amber-soft:#FBF0DC;
+    --copper:#B5602C;
+    --teal:#3F7D6B;
+    --teal-soft:#E3EEE9;
+    --alert:#C1503F;
+    --alert-soft:#F6E4E0;
+    --line:#DEDACE;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--paper);
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .app{ display:flex; min-height:100vh; }
+
+  /* ---------------- SIDEBAR ---------------- */
+  .sidebar{
+    width:248px; flex:none;
+    background:var(--ink); color:#fff;
+    display:flex; flex-direction:column;
+    padding:24px 18px;
+    position:sticky; top:0; height:100vh;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .brand .mark{
+    width:32px; height:32px; border-radius:9px; background:var(--amber);
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .brand .mark svg{ width:18px; height:18px; }
+  .brand .txt .n{ font-family:'Space Grotesk',sans-serif; font-size:14.5px; font-weight:700; line-height:1.2; }
+  .brand .txt .s{ font-size:10.5px; color:rgba(255,255,255,.45); letter-spacing:.04em; text-transform:uppercase; margin-top:1px; }
+
+  .nav{ margin-top:34px; display:flex; flex-direction:column; gap:3px; }
+  .nav-item{
+    display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:10px;
+    color:rgba(255,255,255,.6); cursor:pointer; font-size:14px; font-weight:500; position:relative;
+  }
+  .nav-item svg{ width:18px; height:18px; flex:none; }
+  .nav-item:hover{ background:rgba(255,255,255,.05); color:#fff; }
+  .nav-item.active{ background:rgba(255,255,255,.1); color:#fff; }
+  .nav-item .count{
+    margin-left:auto; background:var(--amber); color:#2B1A03; font-size:11px; font-weight:700;
+    padding:1px 7px; border-radius:20px; font-family:'IBM Plex Mono',monospace;
+  }
+
+  .sidebar-footer{ margin-top:auto; padding-top:18px; border-top:1px solid rgba(255,255,255,.1); }
+  .sto-mini{ display:flex; align-items:center; gap:10px; cursor:pointer; }
+  .sto-mini .av{
+    width:36px; height:36px; border-radius:50%; background:var(--teal); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13px; flex:none;
+  }
+  .sto-mini .name{ font-size:13px; font-weight:600; }
+  .sto-mini .rating{ font-size:11px; color:rgba(255,255,255,.5); margin-top:1px; }
+
+  /* ---------------- CONTENT ---------------- */
+  .content{ flex:1; padding:36px 44px 60px; max-width:1180px; }
+  .topbar{ display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:14px; }
+  .topbar h1{ font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:600; letter-spacing:-.01em; }
+  .topbar p.sub{ color:var(--ink-soft); font-size:13.5px; margin-top:4px; }
+
+  .filter-row{ display:flex; gap:8px; margin-bottom:22px; flex-wrap:wrap; }
+  .filter-chip{
+    padding:8px 14px; border-radius:20px; border:1.5px solid var(--line); background:var(--card);
+    font-size:12.5px; color:var(--ink-soft); cursor:pointer;
+  }
+  .filter-chip.selected{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); gap:16px; }
+
+  /* ---------------- REQUEST CARD ---------------- */
+  .req-card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px;
+    cursor:pointer; transition:.15s;
+  }
+  .req-card:hover{ border-color:var(--ink-soft); }
+  .req-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .req-top .car{ font-family:'Space Grotesk',sans-serif; font-size:15.5px; font-weight:600; }
+  .badge{
+    font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:20px; letter-spacing:.03em; flex:none;
+    text-transform:uppercase; font-family:'IBM Plex Mono',monospace;
+  }
+  .badge.urgent{ background:var(--alert-soft); color:var(--alert); }
+  .badge.new{ background:var(--amber-soft); color:var(--amber-dark); }
+
+  .req-symptom{ font-size:13.5px; color:var(--ink-soft); line-height:1.5; margin-top:8px; }
+  .tag-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .tag-mini{ font-size:11px; background:var(--paper-dim); color:var(--ink-soft); padding:3px 9px; border-radius:14px; }
+
+  .req-meta{ display:flex; gap:14px; margin-top:14px; flex-wrap:wrap; }
+  .req-meta .m{ font-size:11.5px; color:var(--ink-faint); display:flex; align-items:center; gap:5px; }
+  .req-meta svg{ width:13px; height:13px; }
+
+  .req-bottom{ display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+  .req-price{ font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; color:var(--ink); }
+  .req-price span{ font-size:10.5px; color:var(--ink-faint); font-weight:400; display:block; font-family:'Inter',sans-serif; }
+
+  .btn{
+    border:1px solid transparent; border-radius:999px; padding:10px 18px; font-family:'Inter',sans-serif;
+    font-size:13.5px; font-weight:600; cursor:pointer; white-space:nowrap;
+    display:inline-flex; align-items:center; justify-content:center; gap:6px; line-height:1.2;
+    transition:background .15s, border-color .15s;
+  }
+  .btn:active{ transform:scale(.97); }
+  .btn-primary{ background:#F7DDB0; color:#6B4510; }
+  .btn-primary:hover{ background:#F2CF92; }
+  .btn-dark{ background:#3B4656; color:#fff; }
+  .btn-dark:hover{ background:#4A5668; }
+  .btn-outline{ background:var(--card); color:var(--ink-soft); border-color:#E7E3D9; }
+  .btn-outline:hover{ background:var(--paper); border-color:var(--line); }
+  .btn-teal{ background:var(--teal-soft); color:var(--teal); }
+  .btn-teal:hover{ background:#D3E6DE; }
+  .btn-block{ width:100%; }
+
+  .req-detail{
+    margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);
+    display:none; font-size:13px; color:var(--ink-soft); line-height:1.6;
+  }
+  .req-detail.open{ display:block; }
+  .req-detail .locked{ color:var(--ink-faint); font-style:italic; }
+  .req-detail .row{ display:flex; justify-content:space-between; margin-top:6px; }
+  .req-detail .row b{ color:var(--ink); font-weight:600; }
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--ink-faint);
+  }
+  .empty-state svg{ width:36px; height:36px; margin-bottom:10px; opacity:.5; }
+  .empty-state p{ font-size:14px; }
+
+  /* ---------------- MY JOBS LIST ---------------- */
+  .job-row{
+    display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line);
+    border-radius:14px; padding:15px 18px; margin-bottom:10px; cursor:pointer;
+  }
+  .job-row:hover{ border-color:var(--ink-soft); }
+  .job-row .car{ font-family:'Space Grotesk',sans-serif; font-size:14.5px; font-weight:600; width:170px; flex:none; }
+  .job-row .desc{ flex:1; font-size:13px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .status-pill{
+    font-size:11px; font-weight:600; padding:5px 11px; border-radius:20px; flex:none;
+    font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.02em;
+  }
+  .status-pill.s0{ background:var(--amber-soft); color:var(--amber-dark); }
+  .status-pill.s1{ background:#E9E4F5; color:#6A4FA0; }
+  .status-pill.s2{ background:var(--alert-soft); color:var(--alert); }
+  .status-pill.s3{ background:#DDEAF6; color:#2C6FA3; }
+  .status-pill.s4{ background:var(--teal-soft); color:var(--teal); }
+
+  /* ---------------- JOB DETAIL ---------------- */
+  .backlink{ display:flex; align-items:center; gap:8px; color:var(--ink-soft); font-size:13.5px; cursor:pointer; margin-bottom:18px; }
+  .backlink svg{ width:16px; height:16px; }
+
+  .detail-grid{ display:grid; grid-template-columns:1fr 300px; gap:24px; align-items:start; }
+  @media (max-width:900px){ .detail-grid{ grid-template-columns:1fr; } }
+
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px; margin-bottom:16px; }
+  .panel h4{ font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600; margin-bottom:12px; }
+
+  .stage-track{ display:flex; justify-content:space-between; margin:8px 0 26px; position:relative; }
+  .stage-track::before{ content:""; position:absolute; top:9px; left:16px; right:16px; height:2px; background:var(--line); z-index:0; }
+  .stage-dot-wrap{ display:flex; flex-direction:column; align-items:center; gap:6px; z-index:1; width:70px; }
+  .stage-dot{ width:20px; height:20px; border-radius:50%; background:var(--card); border:2px solid var(--line); }
+  .stage-dot-wrap.done .stage-dot{ background:var(--teal); border-color:var(--teal); }
+  .stage-dot-wrap.current .stage-dot{ background:var(--amber); border-color:var(--amber-dark); box-shadow:0 0 0 4px rgba(232,163,61,.25); }
+  .stage-dot-wrap span.lbl{ font-size:10.5px; text-align:center; color:var(--ink-faint); line-height:1.2; }
+  .stage-dot-wrap.current span.lbl{ color:var(--ink); font-weight:600; }
+
+  .client-row{ display:flex; gap:12px; align-items:center; margin-bottom:14px; }
+  .client-row .av{ width:42px; height:42px; border-radius:50%; background:var(--teal-soft); color:var(--teal); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; flex:none; }
+  .client-row .name{ font-size:14px; font-weight:600; }
+  .client-row .phone{ font-size:12.5px; color:var(--ink-faint); margin-top:2px; font-family:'IBM Plex Mono',monospace; }
+
+  .kv{ font-size:13px; color:var(--ink-soft); padding:7px 0; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; }
+  .kv:last-child{ border-bottom:none; }
+  .kv b{ color:var(--ink); font-weight:600; text-align:right; }
+
+  .line-item{ display:flex; gap:8px; margin-bottom:8px; }
+  .line-item input{ border:1.5px solid var(--line); border-radius:10px; padding:9px 11px; font-size:13px; font-family:'Inter',sans-serif; }
+  .line-item .li-name{ flex:1; }
+  .line-item .li-price{ width:100px; font-family:'IBM Plex Mono',monospace; }
+  .add-line{ font-size:12.5px; color:var(--ink-soft); cursor:pointer; display:inline-flex; align-items:center; gap:5px; margin-bottom:14px; }
+  .add-line svg{ width:14px; height:14px; }
+
+  .cost-total{ display:flex; justify-content:space-between; padding-top:12px; margin-top:6px; border-top:1.5px solid var(--ink); }
+  .cost-total span{ font-weight:700; color:var(--ink); font-family:'IBM Plex Mono',monospace; font-size:16px; }
+
+  textarea.note{
+    width:100%; border:1.5px solid var(--line); border-radius:12px; padding:12px; font-family:'Inter',sans-serif;
+    font-size:13px; min-height:70px; resize:none; margin-bottom:14px;
+  }
+  .progress-bar{ height:8px; border-radius:5px; background:var(--paper-dim); overflow:hidden; margin:12px 0; }
+  .progress-bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--amber),var(--copper)); border-radius:5px; }
+
+  .waiting-note{ display:flex; gap:10px; align-items:center; background:var(--amber-soft); border:1px solid #F0DBAE; border-radius:12px; padding:12px 14px; font-size:12.5px; color:#5C4419; margin-top:10px; }
+  .waiting-note svg{ width:16px; height:16px; flex:none; }
+
+  /* ---------------- HISTORY ---------------- */
+  .hist-row{ display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:15px 18px; margin-bottom:10px; }
+  .hist-row .car{ font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; width:170px; flex:none; }
+  .hist-row .date{ font-size:12px; color:var(--ink-faint); width:110px; flex:none; font-family:'IBM Plex Mono',monospace; }
+  .stars{ color:var(--amber-dark); font-size:13px; letter-spacing:1px; flex:1; }
+  .hist-row .payout{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px; }
+
+  /* ---------------- PROFILE ---------------- */
+  .profile-card{ background:var(--ink); color:#fff; border-radius:18px; padding:28px; margin-bottom:20px; }
+  .profile-card .n{ font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:600; }
+  .profile-card .a{ font-size:13px; color:rgba(255,255,255,.55); margin-top:4px; }
+  .profile-card .stat-row{ display:flex; gap:30px; margin-top:20px; }
+  .profile-card .stat .v{ font-family:'IBM Plex Mono',monospace; font-size:20px; font-weight:600; }
+  .profile-card .stat .k{ font-size:11px; color:rgba(255,255,255,.5); margin-top:2px; }
+
+  .toast{
+    position:fixed; right:32px; bottom:32px;
+    background:var(--ink); color:#fff; padding:14px 18px; border-radius:14px;
+    font-size:13.5px; display:flex; gap:10px; align-items:center;
+    opacity:0; transform:translateY(10px); transition:.25s; pointer-events:none; z-index:100;
+  }
+  .toast.show{ opacity:1; transform:translateY(0); }
+
+
+  /* ================= ДИСПЕТЧЕР ================= */
+  .sidebar .brand .mark{ background:var(--alert); }
+  .role-switch{ display:flex; background:rgba(255,255,255,.08); border-radius:10px; padding:3px; margin-top:22px; }
+  .role-switch div{ flex:1; text-align:center; font-size:12px; font-weight:600; padding:7px 4px; border-radius:8px; cursor:pointer; color:rgba(255,255,255,.55); }
+  .role-switch div.on{ background:#fff; color:var(--ink); }
+  .nav-item .count.red{ background:var(--alert); color:#fff; }
+  .shift-box{ font-size:11.5px; color:rgba(255,255,255,.55); line-height:1.5; }
+  .shift-box b{ color:#fff; font-weight:600; }
+
+  .kpi-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+  .kpi{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+  .kpi .k{ font-size:11px; color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.04em; }
+  .kpi .v{ font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:600; margin-top:4px; }
+  .kpi .v.red{ color:var(--alert); }
+  .kpi .s{ font-size:11.5px; color:var(--ink-faint); margin-top:2px; }
+
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
+  @media (max-width:1000px){ .two-col{ grid-template-columns:1fr; } .kpi-row{ grid-template-columns:1fr 1fr; } }
+
+  .ev{ display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+  .ev:last-child{ border-bottom:none; }
+  .ev:hover .t1{ text-decoration:underline; }
+  .ev-ico{ width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex:none; }
+  .ev-ico svg{ width:16px; height:16px; }
+  .ev-ico.sos{ background:var(--alert); color:#fff; }
+  .ev-ico.dispute{ background:var(--alert-soft); color:var(--alert); }
+  .ev-ico.late{ background:var(--amber-soft); color:var(--amber-dark); }
+  .ev-ico.stuck{ background:#E5ECF6; color:#2C6FA3; }
+  .ev-ico.ok{ background:var(--teal-soft); color:var(--teal); }
+  .ev .body{ flex:1; }
+  .ev .t1{ font-size:13.5px; font-weight:600; }
+  .ev .t2{ font-size:12px; color:var(--ink-soft); margin-top:2px; line-height:1.45; }
+  .ev .tm{ font-size:11px; color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; flex:none; }
+
+  .timer{ display:inline-flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; padding:4px 10px; border-radius:20px; }
+  .timer.ok{ background:var(--teal-soft); color:var(--teal); }
+  .timer.warn{ background:var(--amber-soft); color:var(--amber-dark); }
+  .timer.bad{ background:var(--alert-soft); color:var(--alert); }
+  .timer.done{ background:var(--paper-dim); color:var(--ink-faint); }
+
+  table.tbl{ width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .tbl th{ text-align:left; font-size:10.5px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint); background:var(--paper-dim); padding:9px 14px; }
+  .tbl td{ padding:12px 14px; border-top:1px solid var(--line); font-size:13px; vertical-align:middle; }
+  .tbl tr.click{ cursor:pointer; }
+  .tbl tr.click:hover td{ background:var(--paper); }
+  .tbl tr.hl td{ background:#FFF8EE; }
+  .tbl .mono{ font-family:'IBM Plex Mono',monospace; }
+  .tbl .sub{ font-size:11.5px; color:var(--ink-faint); margin-top:2px; }
+  .tbl .nw, .tbl th{ white-space:nowrap; }
+  .who{ display:flex; align-items:center; gap:6px; white-space:nowrap; }
+  .pill{ font-size:10.5px; font-weight:700; padding:4px 10px; border-radius:20px; font-family:'IBM Plex Mono',monospace; text-transform:uppercase; white-space:nowrap; display:inline-block; }
+  .pill.free{ background:var(--teal-soft); color:var(--teal); }
+  .pill.road{ background:#E5ECF6; color:#2C6FA3; }
+  .pill.job{ background:var(--amber-soft); color:var(--amber-dark); }
+  .pill.off{ background:var(--paper-dim); color:var(--ink-faint); }
+  .pill.late{ background:var(--alert-soft); color:var(--alert); }
+  .pill.open{ background:var(--alert-soft); color:var(--alert); }
+  .pill.waiting{ background:#E5ECF6; color:#2C6FA3; }
+  .pill.approval{ background:#EEE8F6; color:#6A4FA0; }
+  .pill.closed{ background:var(--teal-soft); color:var(--teal); }
+
+  .steps-track{ display:flex; gap:4px; margin:10px 0 4px; }
+  .steps-track div{ flex:1; height:6px; border-radius:3px; background:var(--line); }
+  .steps-track div.done{ background:var(--teal); }
+  .steps-track div.cur{ background:var(--amber); }
+  .steps-lbl{ display:flex; justify-content:space-between; font-size:10px; color:var(--ink-faint); }
+
+  .sos-card{ background:var(--card); border:2px solid var(--alert); border-radius:16px; padding:20px; margin-bottom:16px; }
+  .sos-card.closed{ border-color:var(--line); opacity:.75; }
+  .sos-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .sos-top .n{ font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:600; }
+  .sos-elapsed{ font-family:'IBM Plex Mono',monospace; font-size:26px; font-weight:600; color:var(--alert); }
+  .sos-elapsed.ok{ color:var(--teal); font-size:18px; }
+  .sos-steps{ display:flex; gap:8px; margin:14px 0; flex-wrap:wrap; }
+  .sos-steps span{ font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:20px; background:var(--paper-dim); color:var(--ink-faint); }
+  .sos-steps span.done{ background:var(--teal-soft); color:var(--teal); }
+  .btn-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .btn-red{ background:var(--alert-soft); color:var(--alert); }
+  .btn-red:hover{ background:#F0D3CC; }
+  .btn-sm{ padding:7px 14px; font-size:12.5px; border-radius:999px; }
+  .cell-actions{ display:flex; gap:8px; justify-content:flex-end; align-items:center; flex-wrap:nowrap; }
+
+  .freeze{ display:flex; gap:10px; align-items:center; background:var(--alert-soft); border:1px solid #EBC9C1; color:var(--alert); border-radius:12px; padding:11px 14px; font-size:13px; font-weight:600; margin-bottom:16px; }
+  .freeze svg{ width:17px; height:17px; flex:none; }
+  .freeze.ok{ background:var(--teal-soft); border-color:#C9DED6; color:var(--teal); }
+  .tabs{ display:flex; gap:6px; margin-bottom:12px; border-bottom:1px solid var(--line); }
+  .tabs div{ padding:9px 12px; font-size:13px; font-weight:600; color:var(--ink-faint); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .tabs div.on{ color:var(--ink); border-color:var(--amber); }
+  .cmp{ display:grid; grid-template-columns:1fr 1fr; gap:8px; max-width:520px; }
+  .ph{ aspect-ratio:4/3; border-radius:8px; background:linear-gradient(135deg,#E5E1D6,#CFC9BA); position:relative; display:flex; align-items:center; justify-content:center; }
+  .ph svg{ width:20px; height:20px; color:rgba(27,36,48,.28); }
+  .ph .cap{ position:absolute; left:0; right:0; bottom:0; padding:3px 6px; background:linear-gradient(transparent,rgba(27,36,48,.7)); color:#fff; font-size:10px; font-weight:600; border-radius:0 0 8px 8px; }
+  .chat-line{ font-size:12.5px; padding:7px 0; border-bottom:1px solid var(--line); line-height:1.45; }
+  .chat-line b{ font-weight:600; }
+  .chat-line .tm{ font-size:10.5px; color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; margin-left:6px; }
+  .log-line{ display:flex; gap:10px; font-size:12.5px; padding:6px 0; color:var(--ink-soft); }
+  .log-line .tm{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); width:92px; flex:none; }
+  .form-grid{ display:grid; grid-template-columns:1fr 140px; gap:10px; margin-bottom:10px; }
+  .form-grid label, .lbl{ font-size:11.5px; font-weight:600; color:var(--ink-soft); display:block; margin-bottom:5px; }
+  .inp{ width:100%; border:1.5px solid var(--line); border-radius:10px; padding:9px 11px; font-size:13px; font-family:'Inter',sans-serif; background:var(--card); }
+  .money{ background:var(--paper); border-radius:12px; padding:12px 14px; margin:10px 0; }
+  .money .kv{ border-bottom:1px dashed var(--line); }
+  .warn-note{ font-size:12px; color:var(--ink-faint); line-height:1.5; }
+  .handover textarea{ width:100%; border:1.5px solid var(--line); border-radius:10px; padding:8px 10px; font-size:12.5px; font-family:'Inter',sans-serif; min-height:44px; resize:vertical; margin-top:6px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg></div>
+      <div class="txt"><div class="n">Мой Автомеханик</div><div class="s">диспетчерская</div></div>
+    </div>
+
+    <div class="role-switch">
+      <div class="on" id="roleD" onclick="setRole('dispatcher')">Диспетчер</div>
+      <div id="roleR" onclick="setRole('director')">Директор</div>
+    </div>
+
+    <div class="nav" id="navDispatcher" style="margin-top:20px;">
+      <div class="nav-item active" data-view="overview" onclick="showView('overview')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Сводка
+      </div>
+      <div class="nav-item" data-view="sos" onclick="showView('sos')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+        SOS <span class="count red" id="cSos">0</span>
+      </div>
+      <div class="nav-item" data-view="disputes" onclick="showView('disputes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M5 7l-3 7a3 3 0 006 0zM19 7l-3 7a3 3 0 006 0z"/></svg>
+        Споры <span class="count" id="cDisp">0</span>
+      </div>
+      <div class="nav-item" data-view="concierges" onclick="showView('concierges')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-6h14l2 6"/><rect x="3" y="13" width="18" height="6" rx="2"/><circle cx="7.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/></svg>
+        Консьержи <span class="count" id="cUnassigned">0</span>
+      </div>
+      <div class="nav-item" data-view="orders" onclick="showView('orders')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/></svg>
+        Заказы <span class="count" id="cStuck">0</span>
+      </div>
+      <div class="nav-item" data-view="handover" onclick="showView('handover')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+        Передача смены
+      </div>
+    </div>
+
+    <div class="nav" id="navDirector" style="margin-top:20px; display:none;">
+      <div class="nav-item active" data-view="approvals" onclick="showView('approvals')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2h9"/></svg>
+        Возвраты <span class="count red" id="cAppr">0</span>
+      </div>
+      <div class="nav-item" data-view="disputes" onclick="showView('disputes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M5 7l-3 7a3 3 0 006 0zM19 7l-3 7a3 3 0 006 0z"/></svg>
+        Все споры
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="shift-box" id="shiftBox"></div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="view" id="view-overview"></div>
+    <div class="view" id="view-sos" style="display:none;"></div>
+    <div class="view" id="view-disputes" style="display:none;"></div>
+    <div class="view" id="view-dispute" style="display:none;"></div>
+    <div class="view" id="view-concierges" style="display:none;"></div>
+    <div class="view" id="view-orders" style="display:none;"></div>
+    <div class="view" id="view-handover" style="display:none;"></div>
+    <div class="view" id="view-approvals" style="display:none;"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   ПАНЕЛЬ ДИСПЕТЧЕРА — прототип v1.0
+   Решения заказчика 12.10.2026: SOS 24/7, 3 смены по 8 ч; реакция на спор 15 мин,
+   решение до 3 суток; все возвраты утверждает директор; возврат компенсирует СТО
+   (ущерб от консьержа — страховой случай); опоздание консьержа > 20 мин — штраф 50% выезда.
+   ===================================================================== */
+const I = {
+  sos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  dispute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M5 7l-3 7a3 3 0 006 0zM19 7l-3 7a3 3 0 006 0z"/></svg>',
+  late:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',
+  stuck:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>',
+  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>'
+};
+
+const T0 = Date.now();
+const since = (agoSec)=> Math.floor((Date.now()-T0)/1000) + agoSec;   // сколько секунд прошло с события
+const REACT_SEC = 15*60, DECIDE_SEC = 3*24*3600, SOS_TARGET = 120;
+const CONCIERGE_FEE = 25;   // цена выезда для клиентки, BYN (допущение финмодели)
+const COMMISSION = 0.05;
+
+let role = 'dispatcher';
+let currentView = 'overview';
+let openDisputeId = null;
+let disputeTab = 'facts';
+
+/* ---------------- ДАННЫЕ ---------------- */
+let sosCalls = [
+  {id:'S-118', client:'Татьяна Лис', phone:'+375 29 701-22-48', car:'Renault Sandero, 2017 · 7712 КН-7', scenario:'Не заводится', place:'ул. Кальварийская, 25 · точность 12 м', plan:'Продвинутый', ago:38, step:0, log:[]},
+  {id:'S-117', client:'Ирина Ковальчук', phone:'+375 29 310-77-45', car:'Toyota Corolla, 2015', scenario:'Пробито колесо', place:'просп. Победителей, 9', plan:'Максимальный', ago:3*3600, step:4, log:[], reaction:64}
+];
+const SOS_STEPS = ['Новый','Принят','Партнёр вызван','Помощь прибыла','Закрыт'];
+
+let disputes = [
+  {id:'Д-031', order:'0231', car:'Kia Rio, 2019', client:'Анна Иванова', sto:'Автосервис на Независимости', concierge:'Игорь',
+   type:'Повреждение при перегоне', source:'Акт №4 · кнопка «Есть претензия»', claim:'На переднем бампере справа новая царапина — в акте при заборе её не было.',
+   orderSum:135, amount:120, ago:11*60, takenAt:null, status:'open', facts:'acts',
+   log:[{t:'14:52', x:'Клиентка открыла спор из акта №4'},{t:'14:52', x:'Оплата 135 Br приостановлена'}],
+   chat:[{w:'Анна Иванова', t:'14:53', x:'Машину вернули с царапиной на бампере справа. Утром её не было, это видно по фото.'}]},
+  {id:'Д-029', order:'0251', car:'Volkswagen Polo, 2018', client:'Елена Титова', sto:'Автосервис на Независимости', concierge:'Игорь',
+   type:'Качество ремонта', source:'Чат поддержки', claim:'После замены датчика Check Engine снова горит на второй день.',
+   orderSum:150, amount:150, ago:(30*3600), takenAt:29.9*3600, status:'waiting', facts:'estimate', waitingFor:'СТО',
+   log:[{t:'вчера 08:40', x:'Клиентка написала в поддержку'},{t:'вчера 08:46', x:'Диспетчер Ольга взяла спор в работу'},{t:'вчера 08:50', x:'Запрошено объяснение у СТО и фото ошибки с панели у клиентки'},{t:'вчера 11:12', x:'Клиентка прислала фото панели'}],
+   chat:[{w:'Елена Титова', t:'вчера 08:40', x:'Заплатила 150 рублей, а лампочка снова горит.'},{w:'Диспетчер', t:'вчера 08:50', x:'Елена, пришлите, пожалуйста, фото панели с ошибкой. Мы запросили объяснение у СТО.'}],
+   estimate:[['Датчик кислорода Bosch', 95],['Работа по замене', 35],['Диагностика', 20]]},
+  {id:'Д-027', order:'0198', car:'Skoda Rapid, 2017', client:'Ольга Петрова', sto:'СТО «Мотор+»', concierge:'Дмитрий',
+   type:'Несогласие со сметой', source:'Карточка заказа · «Есть претензия»', claim:'В итоговом чеке появилась замена щёток стеклоочистителя за 40 Br, я её не согласовывала.',
+   orderSum:230, amount:40, ago:(2*24*3600+5*3600), takenAt:2*24*3600+4.9*3600, status:'approval', facts:'estimate',
+   proposal:{decision:'partial', amount:40, reason:'Позиция «Щётки стеклоочистителя» добавлена после утверждения сметы, согласия клиентки в чате нет.', by:'Ольга К.'},
+   log:[{t:'10.10 09:15', x:'Клиентка открыла спор'},{t:'10.10 09:21', x:'Диспетчер взяла в работу'},{t:'10.10 12:40', x:'СТО подтвердила: позицию добавили без согласования'},{t:'вчера 10:05', x:'Предложен частичный возврат 40 Br → на утверждение директору'}],
+   chat:[{w:'СТО «Мотор+»', t:'10.10 12:40', x:'Щётки были в плохом состоянии, мастер заменил. Согласен, что не согласовали.'}],
+   estimate:[['ТО-2 (масло, фильтры)', 150],['Проверка тормозов', 40],['Щётки стеклоочистителя (не согласовано)', 40]]},
+  {id:'Д-022', order:'0260', car:'Renault Logan, 2016', client:'Наталья Волкова', sto:'Автосервис на Независимости', concierge:'Дмитрий',
+   type:'Опоздание консьержа', source:'Чат поддержки', claim:'Консьерж приехал на 35 минут позже слота.',
+   orderSum:60, amount:0, ago:5*24*3600, takenAt:5*24*3600-300, status:'closed', facts:'log',
+   result:'Отказ в возврате клиентке: ремонт выполнен качественно. Консьержу начислен штраф 50% выезда (12,50 Br).',
+   log:[{t:'07.10 18:20', x:'Спор открыт'},{t:'07.10 18:25', x:'Взят в работу'},{t:'07.10 19:02', x:'Закрыт: отказ, штраф консьержу'}], chat:[]}
+];
+
+let concierges = [
+  {name:'Игорь', car:'Chevrolet Cobalt', rating:4.9, status:'job', order:'0231', note:'Вернул машину клиентке · ждёт следующий заказ в 17:30', dist:null, fines:[]},
+  {name:'Дмитрий', car:'Kia Rio', rating:4.6, status:'late', order:'0244', note:'Едет к клиентке: ул. Кирова, 9 · слот 14:00–16:00', lateMin:24, dist:null, fines:[{order:'0260', sum:12.5, date:'07.10', removed:false}]},
+  {name:'Сергей', car:'Lada Vesta', rating:4.8, status:'free', order:null, note:'Свободен · Московский р-н', dist:1.2, fines:[]},
+  {name:'Алексей', car:'Renault Logan', rating:4.7, status:'free', order:null, note:'Свободен · Фрунзенский р-н', dist:3.4, fines:[]},
+  {name:'Павел', car:'Skoda Octavia', rating:4.9, status:'off', order:null, note:'Смена с 16:00', dist:null, fines:[]}
+];
+let unassigned = [{id:'0272', car:'Toyota Corolla, 2015', client:'Ирина К.', address:'ул. Железнодорожная, 33', slot:'Сегодня 16:00–18:00', sto:'Автосервис на Независимости'}];
+
+const ORDER_STEPS = ['Назначен','Выехал','У клиентки','Акт №1','В СТО · акт №2','Ремонт','Акт №3','Возврат · акт №4'];
+let orders = [
+  {id:'0231', car:'Kia Rio, 2019', client:'Анна Иванова', sto:'Автосервис на Независимости', concierge:'Игорь', step:8, stage:'Возвращено · спор Д-031', inStage:'25 мин', frozen:true},
+  {id:'0244', car:'Hyundai Solaris, 2021', client:'Мария Соколова', sto:'Автосервис на Независимости', concierge:'Дмитрий', step:1, stage:'Консьерж опаздывает', inStage:'24 мин после слота', stuck:'Опоздание консьержа > 20 мин'},
+  {id:'0251', car:'Volkswagen Polo, 2018', client:'Елена Титова', sto:'Автосервис на Независимости', concierge:'Игорь', step:8, stage:'Возвращено · спор Д-029', inStage:'1 д 6 ч', frozen:true},
+  {id:'0263', car:'Peugeot 308, 2019', client:'Светлана М.', sto:'СТО «Мотор+»', concierge:'Сергей', step:5, stage:'Смета ждёт согласования клиентки', inStage:'3 ч 10 мин', stuck:'Смета не согласована больше 3 часов'},
+  {id:'0265', car:'Nissan Qashqai, 2020', client:'Юлия Р.', sto:'Гараж «На Некрасова»', concierge:'Алексей', step:6, stage:'Ремонт', inStage:'1 ч 05 мин'}
+];
+
+let handoverNotes = {};
+
+/* ---------------- УТИЛИТЫ ---------------- */
+function fmtDur(sec){
+  sec = Math.max(0, Math.floor(sec));
+  const d = Math.floor(sec/86400), h = Math.floor(sec%86400/3600), m = Math.floor(sec%3600/60), s = sec%60;
+  if(d) return `${d} д ${h} ч`;
+  if(h) return `${h} ч ${String(m).padStart(2,'0')} мин`;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function money(v){ return (Math.round(v*100)/100).toLocaleString('ru',{minimumFractionDigits: v%1?2:0, maximumFractionDigits:2}) + ' Br'; }
+function showToast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>el.classList.remove('show'),2600); }
+function nowStr(){ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function beep(){ try{ const c=new (window.AudioContext||window.webkitAudioContext)(); [0,.2,.4].forEach(t=>{ const o=c.createOscillator(),g=c.createGain(); o.frequency.value=880; g.gain.setValueAtTime(.0001,c.currentTime+t); g.gain.exponentialRampToValueAtTime(.25,c.currentTime+t+.02); g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t+.15); o.connect(g); g.connect(c.destination); o.start(c.currentTime+t); o.stop(c.currentTime+t+.16); }); }catch(e){} }
+
+function reactTimer(d){
+  if(d.takenAt!==null) return '<span class="timer done">реакция ✓</span>';
+  const left = REACT_SEC - since(d.ago);
+  if(left<=0) return `<span class="timer bad">реакция просрочена ${fmtDur(-left)}</span>`;
+  return `<span class="timer ${left<5*60?'bad':'warn'}">реакция ${fmtDur(left)}</span>`;
+}
+function decideTimer(d){
+  if(d.status==='closed') return '<span class="timer done">закрыт</span>';
+  const left = DECIDE_SEC - since(d.ago);
+  if(left<=0) return `<span class="timer bad">срок 3 сут. просрочен</span>`;
+  return `<span class="timer ${left<12*3600?'bad':left<24*3600?'warn':'ok'}">до решения ${fmtDur(left)}</span>`;
+}
+const STATUS_LBL = {open:'открыт', waiting:'ждём ответ', approval:'у директора', closed:'закрыт'};
+const DECISIONS = {refuse:'Отказ в претензии', partial:'Частичный возврат', full:'Полный возврат', rework:'Бесплатная доработка на СТО', insurance:'Страховой случай (ущерб от консьержа)'};
+
+/* ---------------- НАВИГАЦИЯ ---------------- */
+function setRole(r){
+  role = r;
+  document.getElementById('roleD').classList.toggle('on', r==='dispatcher');
+  document.getElementById('roleR').classList.toggle('on', r==='director');
+  document.getElementById('navDispatcher').style.display = r==='dispatcher' ? 'flex' : 'none';
+  document.getElementById('navDirector').style.display = r==='director' ? 'flex' : 'none';
+  renderShift();
+  showView(r==='dispatcher' ? 'overview' : 'approvals');
+}
+function showView(id){
+  currentView = id;
+  document.querySelectorAll('.view').forEach(v=>v.style.display='none');
+  document.getElementById('view-'+id).style.display='block';
+  const nav = role==='dispatcher' ? '#navDispatcher' : '#navDirector';
+  document.querySelectorAll(nav+' .nav-item').forEach(n=>n.classList.toggle('active', n.dataset.view===id || (id==='dispute' && n.dataset.view==='disputes')));
+  render();
+  window.scrollTo(0,0);
+}
+function render(){
+  updateCounts();
+  ({overview:renderOverview, sos:renderSos, disputes:renderDisputes, dispute:renderDispute, concierges:renderConcierges, orders:renderOrders, handover:renderHandover, approvals:renderApprovals})[currentView]();
+}
+function renderShift(){
+  document.getElementById('shiftBox').innerHTML = role==='dispatcher'
+    ? 'Дневная смена <b>08:00–16:00</b><br>Диспетчер: <b>Ольга К.</b><br>Следующая: Андрей М.'
+    : 'Вы вошли как <b>директор</b><br>Утверждаете все возвраты клиенткам';
+}
+function updateCounts(){
+  const activeSos = sosCalls.filter(s=>s.step<4).length;
+  document.getElementById('cSos').textContent = activeSos;
+  document.getElementById('cSos').style.display = activeSos ? '' : 'none';
+  document.getElementById('cDisp').textContent = disputes.filter(d=>d.status!=='closed').length;
+  document.getElementById('cUnassigned').textContent = unassigned.length;
+  document.getElementById('cUnassigned').style.display = unassigned.length ? '' : 'none';
+  document.getElementById('cStuck').textContent = orders.filter(o=>o.stuck).length;
+  const nAppr = disputes.filter(d=>d.status==='approval').length;
+  document.getElementById('cAppr').textContent = nAppr;
+  document.getElementById('cAppr').style.display = nAppr ? '' : 'none';
+}
+
+/* ---------------- СВОДКА ---------------- */
+function events(){
+  const ev = [];
+  sosCalls.filter(s=>s.step<4).forEach(s=>ev.push({k:'sos', p:0, t1:`SOS · ${s.scenario} · ${s.client}`, t2:`${s.car} · ${s.place}`, tm:fmtDur(since(s.ago)), go:"showView('sos')"}));
+  disputes.filter(d=>d.status==='open').forEach(d=>ev.push({k:'dispute', p:1, t1:`Спор ${d.id} · ${d.type}`, t2:`${d.client} · заказ №${d.order} · ${d.claim}`, tm:d.takenAt===null?`ждёт ${fmtDur(since(d.ago))}`:'в работе', go:`openDispute('${d.id}')`}));
+  concierges.filter(c=>c.status==='late').forEach(c=>ev.push({k:'late', p:2, t1:`Консьерж ${c.name} опаздывает на ${c.lateMin} мин`, t2:`Заказ №${c.order} · ${c.note}. Больше 20 мин — штраф 50% выезда начислен автоматически`, tm:'сейчас', go:"showView('concierges')"}));
+  unassigned.forEach(u=>ev.push({k:'late', p:2, t1:`Заказ №${u.id} ждёт консьержа`, t2:`${u.car} · ${u.address} · ${u.slot}`, tm:'до слота 1 ч 20 мин', go:"showView('concierges')"}));
+  orders.filter(o=>o.stuck && !o.stuck.startsWith('Опоздание')).forEach(o=>ev.push({k:'stuck', p:3, t1:`Заказ №${o.id} завис: ${o.stuck.toLowerCase()}`, t2:`${o.car} · ${o.client} · ${o.sto}`, tm:o.inStage, go:"showView('orders')"}));
+  disputes.filter(d=>d.status==='approval').forEach(d=>ev.push({k:'ok', p:4, t1:`Спор ${d.id} ждёт директора`, t2:`${DECISIONS[d.proposal.decision]} ${money(d.proposal.amount)}`, tm:'', go:`openDispute('${d.id}')`}));
+  return ev.sort((a,b)=>a.p-b.p);
+}
+function renderOverview(){
+  const ev = events();
+  const onLine = concierges.filter(c=>c.status!=='off').length;
+  const openD = disputes.filter(d=>d.status!=='closed');
+  const activeSos = sosCalls.filter(s=>s.step<4).length;
+  document.getElementById('view-overview').innerHTML = `
+    <div class="topbar"><div><h1>Сводка</h1><p class="sub">Минск · всё, что требует внимания диспетчера прямо сейчас</p></div></div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="k">SOS в работе</div><div class="v ${activeSos?'red':''}">${activeSos}</div><div class="s">цель — принять за 2 мин</div></div>
+      <div class="kpi"><div class="k">Открытые споры</div><div class="v">${openD.length}</div><div class="s">${openD.filter(d=>d.status==='approval').length} у директора</div></div>
+      <div class="kpi"><div class="k">Консьержи на линии</div><div class="v">${onLine} / ${concierges.length}</div><div class="s">${concierges.filter(c=>c.status==='free').length} свободны</div></div>
+      <div class="kpi"><div class="k">Активные заказы</div><div class="v">${orders.length}</div><div class="s">${orders.filter(o=>o.stuck).length} зависли</div></div>
+    </div>
+    <div class="two-col">
+      <div class="panel"><h4>Лента событий</h4>${ev.map(e=>`
+        <div class="ev" onclick="${e.go}">
+          <div class="ev-ico ${e.k}">${I[e.k]}</div>
+          <div class="body"><div class="t1">${e.t1}</div><div class="t2">${e.t2}</div></div>
+          <div class="tm">${e.tm}</div>
+        </div>`).join('') || '<p class="warn-note">Всё спокойно</p>'}</div>
+      <div>
+        <div class="panel"><h4>Сроки по спорам</h4>
+          ${openD.map(d=>`<div class="kv" style="cursor:pointer; align-items:center;" onclick="openDispute('${d.id}')"><span><b style="color:var(--ink);">${d.id}</b> · ${d.type}</span><span style="display:flex; gap:6px;">${d.takenAt===null?reactTimer(d):''}${decideTimer(d)}</span></div>`).join('')}
+        </div>
+        <div class="panel"><h4>Правила смены</h4>
+          <div class="kv"><span>Реакция на спор</span><b>15 мин, круглосуточно</b></div>
+          <div class="kv"><span>Решение спора</span><b>до 3 суток</b></div>
+          <div class="kv"><span>Возвраты</span><b>только через директора</b></div>
+          <div class="kv"><span>Кто платит возврат</span><b>СТО (ущерб консьержа — страховая)</b></div>
+          <div class="kv"><span>Опоздание консьержа > 20 мин</span><b>штраф 50% выезда</b></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ---------------- SOS ---------------- */
+function renderSos(){
+  const list = [...sosCalls].sort((a,b)=>(a.step===4)-(b.step===4));
+  document.getElementById('view-sos').innerHTML = `
+    <div class="topbar"><div><h1>SOS</h1><p class="sub">Круглосуточно. Новые вызовы — со звуком и всегда сверху</p></div></div>
+    ${list.map(s=>{
+      const el = since(s.ago);
+      const closed = s.step===4;
+      const actions = [
+        ['Принять вызов', `sosStep('${s.id}',1)`],
+        ['Партнёр вызван', `sosStep('${s.id}',2)`],
+        ['Помощь прибыла', `sosStep('${s.id}',3)`],
+        ['Закрыть вызов', `sosStep('${s.id}',4)`]
+      ][s.step];
+      return `<div class="sos-card ${closed?'closed':''}">
+        <div class="sos-top">
+          <div><div class="n">${s.id} · ${s.scenario}</div><div class="sub" style="font-size:13px; color:var(--ink-soft); margin-top:3px;">${s.client} · ${s.phone} · пакет «${s.plan}»</div></div>
+          <div style="text-align:right;">
+            ${closed ? `<div class="sos-elapsed ok">закрыт</div><div class="warn-note">реакция ${s.reaction} сек</div>`
+              : s.step===0 ? `<div class="sos-elapsed">${fmtDur(el)}</div><div class="warn-note">${el>SOS_TARGET?'дольше цели 2 мин!':'ждёт принятия'}</div>`
+              : `<div class="sos-elapsed ok">${fmtDur(el)}</div><div class="warn-note">в работе</div>`}
+          </div>
+        </div>
+        <div class="sos-steps">${SOS_STEPS.map((st,i)=>`<span class="${i<=s.step?'done':''}">${st}</span>`).join('')}</div>
+        <div class="kv"><span>Машина</span><b>${s.car}</b></div>
+        <div class="kv"><span>Где</span><b>${s.place}</b></div>
+        ${s.log.length?`<div style="margin-top:10px;">${s.log.map(l=>`<div class="log-line"><span class="tm">${l.t}</span>${l.x}</div>`).join('')}</div>`:''}
+        ${closed?'':`<div class="btn-row" style="margin-top:14px;">
+          <button class="btn ${s.step===0?'btn-red':'btn-primary'}" onclick="${actions[1]}">${actions[0]}</button>
+          <button class="btn btn-outline" onclick="showToast('Открыт чат с ${s.client}')">Написать в чат</button>
+          ${s.step>=1&&s.step<2?`<button class="btn btn-outline" onclick="sosStep('${s.id}',2,'эвакуатор')">Вызвать эвакуатор</button>`:''}
+        </div>`}
+      </div>`;}).join('')}`;
+}
+function sosStep(id, step, what){
+  const s = sosCalls.find(x=>x.id===id);
+  if(step===1) s.reaction = since(s.ago);
+  s.step = step;
+  const txt = {1:`Вызов принят диспетчером Ольгой${s.reaction?` за ${s.reaction} сек`:''}`, 2:`Вызван партнёр: ${what||'техпомощь'}, прибытие ~25 мин`, 3:'Помощь на месте', 4:'Вызов закрыт, запись в истории клиентки'}[step];
+  s.log.push({t:nowStr(), x:txt});
+  showToast(txt);
+  render();
+}
+
+/* ---------------- СПОРЫ ---------------- */
+function renderDisputes(){
+  const list = [...disputes].sort((a,b)=>(a.status==='closed')-(b.status==='closed'));
+  document.getElementById('view-disputes').innerHTML = `
+    <div class="topbar"><div><h1>Споры</h1><p class="sub">Реакция — 15 минут, решение — до 3 суток. Пока спор открыт, оплата заказа заморожена</p></div></div>
+    <table class="tbl"><thead><tr><th>Спор</th><th>Тип</th><th>Стороны</th><th>Сумма</th><th>Статус</th><th>Сроки</th></tr></thead><tbody>
+    ${list.map(d=>`<tr class="click ${d.status==='open'&&d.takenAt===null?'hl':''}" onclick="openDispute('${d.id}')">
+      <td><b>${d.id}</b><div class="sub">заказ №${d.order}</div></td>
+      <td>${d.type}<div class="sub">${d.source}</div></td>
+      <td>${d.client}<div class="sub">${d.sto}</div></td>
+      <td class="mono">${d.amount?money(d.amount):'—'}</td>
+      <td><span class="pill ${d.status}">${STATUS_LBL[d.status]}</span></td>
+      <td style="white-space:nowrap;">${d.status==='open'&&d.takenAt===null?reactTimer(d)+'<br>':''}${decideTimer(d)}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+function openDispute(id){ openDisputeId = id; disputeTab = 'facts'; showView('dispute'); }
+
+function factsHtml(d){
+  if(d.facts==='acts'){
+    const pairs = [['Спереди','14:32','19:24'],['Справа','14:32','19:24'],['Бампер справа крупно','—','19:24']];
+    return `<div class="cmp" style="margin-bottom:6px; font-size:11px; color:var(--ink-faint); font-family:'IBM Plex Mono',monospace;"><span>АКТ №1 · ЗАБОР</span><span>АКТ №4 · ВОЗВРАТ</span></div>
+      ${pairs.map(p=>`<div class="cmp" style="margin-bottom:8px;">
+        <div class="ph">${p[1]==='—'?'<span class="warn-note">нет снимка</span>':I.cam}<div class="cap">${p[0]} · ${p[1]}</div></div>
+        <div class="ph" style="${p[0].includes('крупно')||p[0]==='Справа'?'outline:2px solid var(--alert); outline-offset:-2px;':''}">${I.cam}<div class="cap">${p[0]} · ${p[2]}</div></div></div>`).join('')}
+      <div class="kv"><span>Повреждения в акте №1</span><b>Царапина на заднем бампере слева</b></div>
+      <div class="kv"><span>Повреждения в акте №4</span><b style="color:var(--alert);">+ Царапина на переднем бампере справа</b></div>
+      <div class="kv"><span>Акты №2 и №3 (СТО)</span><b>Новой царапины нет — появилась после выдачи консьержу</b></div>
+      <div class="kv"><span>Кто вёз машину</span><b>Консьерж ${d.concierge}</b></div>`;
+  }
+  if(d.facts==='estimate'){
+    return `<h4 style="font-size:13.5px;">Смета и чек по заказу №${d.order}</h4>
+      ${d.estimate.map(e=>`<div class="kv"><span>${e[0]}</span><b>${money(e[1])}</b></div>`).join('')}
+      <div class="kv"><span>Итого оплачено</span><b>${money(d.orderSum)}</b></div>`;
+  }
+  return `<p class="warn-note">${d.result||''}</p>`;
+}
+
+function renderDispute(){
+  const d = disputes.find(x=>x.id===openDisputeId);
+  const frozen = d.status!=='closed';
+  const tabs = {facts:'Факты', chat:'Чат', log:'История'};
+  let body = '';
+  if(disputeTab==='facts') body = factsHtml(d);
+  if(disputeTab==='chat') body = (d.chat.map(c=>`<div class="chat-line"><b>${c.w}</b><span class="tm">${c.t}</span><br>${c.x}</div>`).join('') || '<p class="warn-note">Сообщений нет</p>')
+     + (frozen && role==='dispatcher' ? `<div style="display:flex; gap:8px; margin-top:10px;"><input class="inp" id="chatInp" placeholder="Сообщение сторонам спора"><button class="btn btn-dark btn-sm" onclick="sendChat()">Отправить</button></div>` : '');
+  if(disputeTab==='log') body = d.log.map(l=>`<div class="log-line"><span class="tm">${l.t}</span>${l.x}</div>`).join('');
+
+  document.getElementById('view-dispute').innerHTML = `
+    <div class="backlink" onclick="showView('disputes')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Все споры</div>
+    <div class="topbar">
+      <div><h1>Спор ${d.id} · ${d.type}</h1><p class="sub">Заказ №${d.order} · ${d.car} · ${d.source}</p></div>
+      <div style="display:flex; gap:8px; align-items:center;">${d.status==='open'&&d.takenAt===null?reactTimer(d):''}${decideTimer(d)}<span class="pill ${d.status}">${STATUS_LBL[d.status]}</span></div>
+    </div>
+    <div class="freeze ${frozen?'':'ok'}">${frozen?I.lock:I.ok}${frozen?`Оплата по заказу ${money(d.orderSum)} заморожена до решения`:`Спор закрыт · оплата разблокирована`}</div>
+    <div class="detail-grid">
+      <div>
+        <div class="panel"><h4>Претензия</h4><p style="font-size:14px; line-height:1.55;">«${d.claim}»</p><p class="warn-note" style="margin-top:6px;">${d.client} · сумма под вопросом: ${d.amount?money(d.amount):'—'}</p></div>
+        <div class="panel">
+          <div class="tabs">${Object.keys(tabs).map(k=>`<div class="${disputeTab===k?'on':''}" onclick="disputeTab='${k}'; renderDispute();">${tabs[k]}</div>`).join('')}</div>
+          ${body}
+        </div>
+        ${actionPanel(d)}
+      </div>
+      <div>
+        <div class="panel"><h4>Стороны</h4>
+          <div class="kv"><span>Клиентка</span><b>${d.client}</b></div>
+          <div class="kv"><span>СТО</span><b>${d.sto}</b></div>
+          <div class="kv"><span>Консьерж</span><b>${d.concierge}</b></div>
+        </div>
+        <div class="panel"><h4>Правила</h4>
+          <p class="warn-note">Возврат клиентке удерживается из выплаты СТО и утверждается директором. Ущерб от консьержа при перегоне — страховой случай, СТО не платит. Решение после закрытия не меняется — только повторный спор с новыми фактами.</p>
+        </div>
+      </div>
+    </div>`;
+  if(document.getElementById('decSel')) decChanged();
+}
+
+function actionPanel(d){
+  if(d.status==='closed') return `<div class="panel"><h4>Решение</h4><p style="font-size:13.5px; line-height:1.55;">${d.result}</p></div>`;
+  if(d.status==='approval'){
+    const p = d.proposal;
+    return `<div class="panel"><h4>На утверждении у директора</h4>
+      <div class="kv"><span>Предложение</span><b>${DECISIONS[p.decision]} · ${money(p.amount)}</b></div>
+      <div class="kv"><span>Обоснование</span><b style="max-width:60%;">${p.reason}</b></div>
+      <div class="kv"><span>Подготовила</span><b>${p.by}</b></div>
+      ${moneyCalc(d, p.amount)}
+      ${role==='director' ? directorButtons(d) : '<p class="warn-note">Директору отправлен push. Диспетчер не может вернуть деньги сам.</p>'}
+    </div>`;
+  }
+  if(role==='director') return '';
+  if(d.takenAt===null) return `<div class="panel"><h4>Новый спор</h4><p class="warn-note" style="margin-bottom:12px;">Возьмите спор в работу в течение 15 минут — стороны получат push, что спор рассматривается.</p><button class="btn btn-primary btn-block" onclick="takeDispute()">Взять в работу</button></div>`;
+  return `<div class="panel"><h4>Действия диспетчера</h4>
+    <div class="btn-row" style="margin-bottom:16px;">
+      <button class="btn btn-outline btn-sm" onclick="requestInfo('клиентки','фото и пояснение')">Запросить фото у клиентки</button>
+      <button class="btn btn-outline btn-sm" onclick="requestInfo('СТО','объяснение')">Запросить объяснение у СТО</button>
+      <button class="btn btn-outline btn-sm" onclick="requestInfo('консьержа','объяснение')">Запросить объяснение у консьержа</button>
+    </div>
+    ${d.waitingFor?`<p class="warn-note" style="margin:-6px 0 14px;">Ждём ответ: ${d.waitingFor}</p>`:''}
+    <h4 style="font-size:14px;">Предложение по спору</h4>
+    <div class="form-grid">
+      <div><label>Решение</label><select class="inp" id="decSel" onchange="decChanged()">
+        ${Object.keys(DECISIONS).map(k=>`<option value="${k}" ${d.facts==='acts'&&k==='insurance'?'selected':''}>${DECISIONS[k]}</option>`).join('')}
+      </select></div>
+      <div><label>Сумма возврата</label><input class="inp" id="decAmount" type="number" value="${d.amount}" oninput="decChanged()"></div>
+    </div>
+    <label class="lbl">Обоснование</label>
+    <textarea class="note" id="decReason" placeholder="Почему такое решение: ссылки на акты, смету, чат"></textarea>
+    <div id="decCalc"></div>
+    <button class="btn btn-dark btn-block" onclick="submitProposal()" id="decBtn">Отправить</button>
+  </div>`;
+}
+
+function moneyCalc(d, refund){
+  const base = d.orderSum - refund;
+  const fee = base*COMMISSION;
+  return `<div class="money">
+    <div class="kv"><span>Оплачено клиенткой</span><b>${money(d.orderSum)}</b></div>
+    <div class="kv"><span>Возврат клиентке (из выплаты СТО)</span><b style="color:var(--alert);">− ${money(refund)}</b></div>
+    <div class="kv"><span>Удержание платформы 5% от ${money(base)}</span><b>${money(fee)}</b></div>
+    <div class="kv"><span>Выплата СТО</span><b>${money(base-fee)}</b></div>
+  </div>`;
+}
+
+function decChanged(){
+  const d = disputes.find(x=>x.id===openDisputeId);
+  const k = document.getElementById('decSel').value;
+  const amt = document.getElementById('decAmount');
+  const isRefund = k==='partial'||k==='full';
+  if(k==='full') amt.value = d.orderSum;
+  amt.disabled = !isRefund;
+  document.getElementById('decCalc').innerHTML = isRefund ? moneyCalc(d, +amt.value||0)
+    : k==='insurance' ? `<p class="warn-note" style="margin-bottom:10px;">Ущерб от консьержа покрывает страховка. СТО получит полную выплату. Клиентке — компенсация через страховой случай.</p>`
+    : `<p class="warn-note" style="margin-bottom:10px;">Без возврата денег — диспетчер закрывает спор сам.</p>`;
+  document.getElementById('decBtn').textContent = isRefund ? 'Отправить директору на утверждение' : 'Закрыть спор';
+}
+
+function takeDispute(){
+  const d = disputes.find(x=>x.id===openDisputeId);
+  d.takenAt = since(d.ago);
+  d.status = 'open';
+  d.log.push({t:nowStr(), x:`Диспетчер Ольга взяла спор в работу (через ${fmtDur(d.takenAt)})`});
+  showToast('Спор в работе — стороны получили push');
+  renderDispute(); setTimeout(decChanged,0); updateCounts();
+}
+function requestInfo(who, what){
+  const d = disputes.find(x=>x.id===openDisputeId);
+  d.status = 'waiting'; d.waitingFor = who;
+  d.log.push({t:nowStr(), x:`Запрошено: ${what} у ${who}`});
+  showToast(`Запрос отправлен ${who} — push в приложение`);
+  renderDispute(); setTimeout(decChanged,0);
+}
+function sendChat(){
+  const d = disputes.find(x=>x.id===openDisputeId);
+  const v = document.getElementById('chatInp').value.trim(); if(!v) return;
+  d.chat.push({w:'Диспетчер', t:nowStr(), x:v}); renderDispute();
+}
+function submitProposal(){
+  const d = disputes.find(x=>x.id===openDisputeId);
+  const k = document.getElementById('decSel').value;
+  const amount = +document.getElementById('decAmount').value || 0;
+  const reason = document.getElementById('decReason').value.trim();
+  if(!reason){ showToast('Добавьте обоснование решения'); return; }
+  if(k==='partial'||k==='full'){
+    d.status='approval'; d.proposal={decision:k, amount, reason, by:'Ольга К.'};
+    d.log.push({t:nowStr(), x:`Предложен ${DECISIONS[k].toLowerCase()} ${money(amount)} → директору на утверждение`});
+    showToast('Отправлено директору — ему пришёл push');
+  } else {
+    d.status='closed';
+    d.result = k==='insurance' ? `Страховой случай: ущерб от консьержа ${d.concierge} передан в страховую. СТО получает полную выплату. ${reason}` : `${DECISIONS[k]}. ${reason}`;
+    d.log.push({t:nowStr(), x:`Спор закрыт: ${DECISIONS[k].toLowerCase()}. Оплата разблокирована`});
+    const o = orders.find(x=>x.id===d.order); if(o) o.frozen=false;
+    showToast('Спор закрыт — стороны получили push');
+  }
+  renderDispute();
+}
+
+/* ---------------- ДИРЕКТОР ---------------- */
+function directorButtons(d){
+  return `<label class="lbl" style="margin-top:10px;">Комментарий директора</label>
+    <textarea class="note" id="dirComment-${d.id}" placeholder="Необязательно при утверждении, обязательно при возврате на доработку"></textarea>
+    <div class="btn-row"><button class="btn btn-teal" onclick="approve('${d.id}')">Утвердить возврат</button><button class="btn btn-outline" onclick="reject('${d.id}')">Вернуть диспетчеру</button></div>`;
+}
+function renderApprovals(){
+  const list = disputes.filter(d=>d.status==='approval');
+  document.getElementById('view-approvals').innerHTML = `
+    <div class="topbar"><div><h1>Возвраты на утверждение</h1><p class="sub">Все возвраты клиенткам проходят через директора. Возврат удерживается из выплаты СТО</p></div></div>
+    ${list.length ? list.map(d=>`<div class="panel">
+      <div class="act-head" style="display:flex; justify-content:space-between; gap:10px; margin-bottom:10px;">
+        <div><h4 style="margin-bottom:2px;">${d.id} · ${d.type}</h4><div class="warn-note">${d.client} ↔ ${d.sto} · заказ №${d.order}</div></div>
+        ${decideTimer(d)}
+      </div>
+      <p style="font-size:13.5px; margin-bottom:8px;">«${d.claim}»</p>
+      <div class="kv"><span>Предложение диспетчера</span><b>${DECISIONS[d.proposal.decision]} · ${money(d.proposal.amount)}</b></div>
+      <div class="kv"><span>Обоснование</span><b style="max-width:60%;">${d.proposal.reason}</b></div>
+      ${moneyCalc(d, d.proposal.amount)}
+      <div class="btn-row"><button class="btn btn-outline btn-sm" onclick="openDispute('${d.id}')">Открыть спор целиком</button></div>
+      ${directorButtons(d)}
+    </div>`).join('') : '<div class="empty-state"><p>Нет возвратов на утверждение</p></div>'}`;
+}
+function approve(id){
+  const d = disputes.find(x=>x.id===id);
+  const c = (document.getElementById('dirComment-'+id)||{}).value||'';
+  d.status='closed';
+  d.result = `${DECISIONS[d.proposal.decision]} ${money(d.proposal.amount)} утверждён директором. Удержан из выплаты СТО «${d.sto}». ${d.proposal.reason}${c?' Комментарий директора: '+c:''}`;
+  d.log.push({t:nowStr(), x:`Директор утвердил возврат ${money(d.proposal.amount)}. Оплата разблокирована`});
+  const o = orders.find(x=>x.id===d.order); if(o) o.frozen=false;
+  showToast(`Возврат ${money(d.proposal.amount)} утверждён — клиентка и СТО получили push`);
+  render();
+}
+function reject(id){
+  const d = disputes.find(x=>x.id===id);
+  const c = ((document.getElementById('dirComment-'+id)||{}).value||'').trim();
+  if(!c){ showToast('Напишите, что нужно доработать'); return; }
+  d.status='open'; d.log.push({t:nowStr(), x:`Директор вернул на доработку: ${c}`}); delete d.proposal;
+  showToast('Спор возвращён диспетчеру');
+  render();
+}
+
+/* ---------------- КОНСЬЕРЖИ ---------------- */
+const C_STATUS = {free:'свободен', road:'в пути', job:'на заказе', off:'не на смене', late:'опаздывает'};
+let fineEdit = null;
+function renderConcierges(){
+  const free = concierges.filter(c=>c.status==='free').sort((a,b)=>a.dist-b.dist);
+  document.getElementById('view-concierges').innerHTML = `
+    <div class="topbar"><div><h1>Консьержи</h1><p class="sub">Назначение на заказы и контроль опозданий. Опоздание больше 20 минут — штраф 50% от стоимости выезда (${money(CONCIERGE_FEE)})</p></div></div>
+    ${unassigned.map(u=>`<div class="panel" style="border-color:var(--amber);">
+      <h4>Ждёт назначения · заказ №${u.id}</h4>
+      <div class="kv"><span>${u.car} · ${u.client}</span><b>${u.address} · ${u.slot}</b></div>
+      <p class="warn-note" style="margin:10px 0 8px;">Ближайшие свободные к адресу забора:</p>
+      ${free.map(c=>`<div class="kv" style="align-items:center;"><span><b style="color:var(--ink);">${c.name}</b> · ${c.car} · ★ ${c.rating} · ${c.dist} км</span><button class="btn btn-primary btn-sm" onclick="assign('${u.id}','${c.name}')">Назначить</button></div>`).join('')}
+    </div>`).join('')}
+    <table class="tbl"><thead><tr><th>Консьерж</th><th>Статус</th><th>Сейчас</th><th>Штрафы</th><th></th></tr></thead><tbody>
+    ${concierges.map((c,i)=>{
+      const active = c.fines.filter(f=>!f.removed);
+      return `<tr class="${c.status==='late'?'hl':''}">
+        <td><b>${c.name}</b><div class="sub">${c.car} · ★ ${c.rating}</div></td>
+        <td><span class="pill ${c.status}">${C_STATUS[c.status]}${c.status==='late'?' '+c.lateMin+' мин':''}</span></td>
+        <td>${c.order?`Заказ №${c.order}<div class="sub">${c.note}</div>`:`<span class="sub">${c.note}</span>`}</td>
+        <td class="mono">${active.length?active.map(f=>`${money(f.sum)} · №${f.order}`).join('<br>'):'—'}${c.fines.some(f=>f.removed)?'<div class="sub">есть снятые</div>':''}</td>
+        <td style="text-align:right; white-space:nowrap;">
+          ${c.status==='late'?`<button class="btn btn-outline btn-sm" onclick="reassign(${i})">Переназначить</button> `:''}
+          ${active.length?`<button class="btn btn-outline btn-sm" onclick="fineEdit=${i}; renderConcierges();">Снять штраф</button>`:''}
+        </td></tr>
+        ${fineEdit===i?`<tr><td colspan="5" style="background:var(--paper);">
+          <div style="display:flex; gap:8px; align-items:center;"><select class="inp" id="fineReason" style="max-width:360px;"><option>Пробка из-за ДТП на маршруте</option><option>Задержка по вине клиентки</option><option>Диспетчер изменил маршрут</option><option>Другое</option></select>
+          <button class="btn btn-dark btn-sm" onclick="removeFine(${i})">Снять с обоснованием</button><button class="btn btn-outline btn-sm" onclick="fineEdit=null; renderConcierges();">Отмена</button></div></td></tr>`:''}`;
+    }).join('')}</tbody></table>`;
+}
+function assign(orderId, name){
+  const c = concierges.find(x=>x.name===name);
+  c.status='road'; c.order=orderId; c.note='Едет к клиентке · ул. Железнодорожная, 33'; c.dist=null;
+  unassigned = unassigned.filter(u=>u.id!==orderId);
+  showToast(`${name} назначен на заказ №${orderId} — клиентке пришёл push с карточкой консьержа`);
+  render();
+}
+function reassign(i){
+  const c = concierges[i];
+  const free = concierges.filter(x=>x.status==='free').sort((a,b)=>a.dist-b.dist)[0];
+  if(!free){ showToast('Нет свободных консьержей'); return; }
+  free.status='road'; free.order=c.order; free.note=c.note; free.dist=null;
+  c.fines.push({order:c.order, sum:CONCIERGE_FEE*0.5, date:'сегодня', removed:false});
+  c.status='free'; c.note='Снят с заказа, штраф за опоздание начислен'; c.order=null; c.lateMin=0; c.dist=2.8;
+  const o = orders.find(x=>x.id===free.order); if(o){ o.concierge=free.name; o.stuck=null; o.stage='Консьерж в пути'; o.inStage='только что'; }
+  showToast(`Заказ передан: ${free.name}. ${c.name} — штраф ${money(CONCIERGE_FEE*0.5)}`);
+  render();
+}
+function removeFine(i){
+  const c = concierges[i];
+  const f = c.fines.find(x=>!x.removed); f.removed=true; f.reason=document.getElementById('fineReason').value;
+  fineEdit=null;
+  showToast(`Штраф ${c.name} снят. Причина: ${f.reason}`);
+  render();
+}
+
+/* ---------------- ЗАКАЗЫ ---------------- */
+function renderOrders(){
+  document.getElementById('view-orders').innerHTML = `
+    <div class="topbar"><div><h1>Заказы</h1><p class="sub">Шаги консьержа и подсветка зависших заказов</p></div></div>
+    <table class="tbl"><thead><tr><th style="width:190px;">Заказ</th><th>Ход заказа</th><th style="width:200px;">Сейчас</th><th></th></tr></thead><tbody>
+    ${orders.map(o=>`<tr class="${o.stuck?'hl':''}">
+      <td><b>№${o.id}</b> · ${o.car}<div class="sub">${o.client} · ${o.sto}</div><div class="sub">Консьерж: ${o.concierge}</div></td>
+      <td><div class="steps-track">${ORDER_STEPS.map((s,i)=>`<div class="${i<o.step?'done':i===o.step?'cur':''}" title="${s}"></div>`).join('')}</div>
+        <div class="steps-lbl"><span>${ORDER_STEPS[0]}</span><span>${o.step>=8?'Возвращено':ORDER_STEPS[o.step]}</span><span>${ORDER_STEPS[7]}</span></div></td>
+      <td>${o.stage}<div class="sub">в стадии: ${o.inStage}</div>${o.stuck?`<div class="sub" style="color:var(--alert); font-weight:600;">${o.stuck}</div>`:''}${o.frozen?'<div class="sub" style="color:var(--alert);">оплата заморожена</div>':''}</td>
+      <td style="text-align:right; white-space:nowrap;">${o.stuck?`<button class="btn btn-outline btn-sm" onclick="nudge('${o.id}')">Написать сторонам</button>`:''}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+function nudge(id){
+  const o = orders.find(x=>x.id===id);
+  showToast(`Сообщение отправлено: ${o.client} и ${o.sto}`);
+}
+
+/* ---------------- ПЕРЕДАЧА СМЕНЫ ---------------- */
+function renderHandover(){
+  const items = [
+    ...sosCalls.filter(s=>s.step<4).map(s=>({k:s.id, t:`SOS ${s.id} · ${s.scenario} · ${s.client}`, s:SOS_STEPS[s.step]})),
+    ...disputes.filter(d=>d.status!=='closed').map(d=>({k:d.id, t:`Спор ${d.id} · ${d.type} · ${d.client}`, s:STATUS_LBL[d.status]})),
+    ...orders.filter(o=>o.stuck).map(o=>({k:'o'+o.id, t:`Заказ №${o.id} · ${o.stuck}`, s:o.stage}))
+  ];
+  document.getElementById('view-handover').innerHTML = `
+    <div class="topbar"><div><h1>Передача смены</h1><p class="sub">Дневная смена (Ольга К.) → вечерняя смена 16:00–00:00 (Андрей М.). Всё открытое переходит со статусом и комментарием</p></div></div>
+    <div class="panel handover">${items.map(it=>`<div style="padding:10px 0; border-bottom:1px solid var(--line);">
+      <div style="display:flex; justify-content:space-between; gap:10px;"><b style="font-size:13.5px;">${it.t}</b><span class="pill waiting">${it.s}</span></div>
+      <textarea placeholder="Комментарий для следующей смены" oninput="handoverNotes['${it.k}']=this.value">${handoverNotes[it.k]||''}</textarea>
+    </div>`).join('')}
+    <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="showToast('Смена передана Андрею М. — ${items.length} открытых пунктов с комментариями')">Передать смену</button></div>`;
+}
+
+/* ---------------- ЖИВЫЕ ТАЙМЕРЫ И ДЕМО-СОБЫТИЕ ---------------- */
+setInterval(()=>{
+  if(['overview','sos','disputes'].includes(currentView)) render();
+  else if(currentView==='dispute'){ // обновляем только таймеры, чтобы не сбивать ввод
+    const d = disputes.find(x=>x.id===openDisputeId);
+    const box = document.querySelector('#view-dispute .topbar > div:last-child');
+    if(box) box.innerHTML = `${d.status==='open'&&d.takenAt===null?reactTimer(d):''}${decideTimer(d)}<span class="pill ${d.status}">${STATUS_LBL[d.status]}</span>`;
+  }
+}, 1000);
+
+/* демо-события (новые SOS, заявки) теперь приходят с сервера экосистемы */
+renderShift();
+showView('overview');
+</script>
+<script src="../shared/ma-sdk.js"></script>
+<script src="dispatcher-sync.js"></script>
+
+</body>
+</html>

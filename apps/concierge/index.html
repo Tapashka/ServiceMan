@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Мой автомеханик · Консьерж</title>
+<meta name="theme-color" content="#1B2430">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: one phone-sized app column, centred on desktop with a side note; full width on phones. Tokens = дизайн-система проекта */
+:root{
+  --ink:#1B2430;--ink-soft:#4D5769;--ink-faint:#8891A0;
+  --paper:#F6F4EF;--paper-dim:#ECE8DE;--card:#FFFFFF;
+  --amber:#E8A33D;--amber-dark:#C77F1D;--copper:#B5602C;
+  --teal:#3F7D6B;--alert:#C1503F;--line:#DEDACE;
+  --on-amber:#1B2430;--shade:rgba(27,36,48,.45);
+  --f-head:"Space Grotesk",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#ECE8DE;--ink-soft:#B9B6AD;--ink-faint:#878D97;
+  --paper:#14191F;--paper-dim:#1E252D;--card:#1A2028;
+  --amber:#E8A33D;--amber-dark:#F0B65E;--copper:#D9895A;
+  --teal:#5FA58F;--alert:#E07463;--line:#2D353F;--on-amber:#1B2430;--shade:rgba(0,0,0,.6);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --ink:#ECE8DE;--ink-soft:#B9B6AD;--ink-faint:#878D97;
+  --paper:#14191F;--paper-dim:#1E252D;--card:#1A2028;
+  --amber:#E8A33D;--amber-dark:#F0B65E;--copper:#D9895A;
+  --teal:#5FA58F;--alert:#E07463;--line:#2D353F;--on-amber:#1B2430;--shade:rgba(0,0,0,.6);color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper-dim);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;padding-inline:16px;padding-block:24px}
+.wrap{display:flex;gap:32px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.note{max-width:300px;min-width:0;color:var(--ink-soft);font-size:14px;padding-top:8px}
+.note h1{font-family:var(--f-head);font-size:24px;line-height:1.15;color:var(--ink);margin:0 0 8px;text-wrap:balance}
+.note p{margin:0 0 10px}
+.note .k{font-family:var(--f-mono);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--copper)}
+.note ol{padding-left:18px;margin:0 0 10px}
+.note li{margin-bottom:4px}
+
+.phone{width:390px;max-width:100%;height:800px;max-height:calc(100vh - 48px);min-height:620px;background:var(--paper);border:1px solid var(--line);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 18px 50px -20px var(--shade)}
+@media (max-width:460px){body{padding-inline:0;padding-block:0}.phone{border-radius:0;border:0;height:100vh;max-height:none}.note{padding-inline:16px;padding-block:20px}}
+
+.top{padding:14px 18px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);background:var(--paper)}
+.top h2{font-family:var(--f-head);font-size:19px;margin:0;flex:1;min-width:0}
+.back{border:0;background:none;color:var(--ink);font-size:22px;line-height:1;padding:2px 6px 2px 0;cursor:pointer}
+.screen{flex:1;overflow-y:auto;padding:14px 16px 20px;display:flex;flex-direction:column;gap:12px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--card)}
+.tabs button{border:0;background:none;padding:9px 0 11px;font:500 11px var(--f-body);color:var(--ink-faint);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.tabs button.on{color:var(--ink)}
+.tabs button.on svg{stroke:var(--amber-dark)}
+.badge-dot{position:relative}
+.badge-dot[data-n]::after{content:attr(data-n);position:absolute;top:-4px;right:-8px;background:var(--alert);color:#fff;font:600 10px var(--f-mono);border-radius:8px;padding:0 4px}
+
+button:focus-visible,input:focus-visible,label:focus-within{outline:2px solid var(--amber);outline-offset:2px}
+
+.shift{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.shift .t{flex:1;min-width:0}
+.shift b{display:block;font-family:var(--f-head);font-size:16px}
+.shift small{color:var(--ink-soft)}
+.sw{width:50px;height:30px;border-radius:15px;background:var(--line);border:0;position:relative;cursor:pointer;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--card);transition:left .15s}
+.sw.on{background:var(--teal)}.sw.on::after{left:23px}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink-soft);border-radius:16px;padding:5px 11px;font:500 13px var(--f-body);cursor:pointer}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;display:flex;flex-direction:column;gap:8px}
+.card.tap{cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.card.tap:hover{border-color:var(--ink-faint)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sp{flex:1}
+.lbl{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint)}
+.pill{font:600 11px var(--f-mono);text-transform:uppercase;letter-spacing:.04em;padding:3px 7px;border-radius:6px;background:var(--paper-dim);color:var(--ink-soft)}
+.pill.urg{background:color-mix(in srgb,var(--alert) 16%,transparent);color:var(--alert)}
+.pill.ok{background:color-mix(in srgb,var(--teal) 16%,transparent);color:var(--teal)}
+.pill.am{background:color-mix(in srgb,var(--amber) 22%,transparent);color:var(--amber-dark)}
+.money{font:600 17px var(--f-mono);font-variant-numeric:tabular-nums}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.car{font-family:var(--f-head);font-weight:600;font-size:16px}
+.route{display:grid;grid-template-columns:14px 1fr;gap:2px 8px;font-size:14px}
+.route i{width:10px;height:10px;border-radius:50%;border:2px solid var(--ink-soft);margin-top:4px;justify-self:center}
+.route i.end{background:var(--amber);border-color:var(--amber-dark)}
+.route .ln{width:2px;background:var(--line);justify-self:center;height:12px}
+.muted{color:var(--ink-soft);font-size:13px}
+.hid{color:var(--ink-faint);font-style:italic;font-size:13px}
+
+.btn{border:0;border-radius:12px;padding:13px 16px;font:600 15px var(--f-body);cursor:pointer;width:100%}
+.btn.pri{background:var(--amber);color:var(--on-amber)}
+.btn.pri:hover{background:var(--amber-dark)}
+.btn.sec{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn.dan{background:none;color:var(--alert);border:1px solid color-mix(in srgb,var(--alert) 40%,transparent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+.map{height:150px;border-radius:14px;border:1px solid var(--line);background:
+ linear-gradient(90deg,transparent 48%,var(--line) 48% 52%,transparent 52%) 0 0/60px 60px,
+ linear-gradient(0deg,transparent 48%,var(--line) 48% 52%,transparent 52%) 0 0/60px 60px,var(--paper-dim);position:relative;overflow:hidden}
+.map svg{position:absolute;inset:0;width:100%;height:100%}
+.map .att{position:absolute;right:6px;bottom:4px;font:10px var(--f-body);color:var(--ink-faint)}
+
+.steps{display:flex;flex-direction:column;gap:0}
+.st{display:grid;grid-template-columns:22px 1fr;gap:10px;font-size:14px;padding-bottom:10px;position:relative}
+.st .d{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);background:var(--card);margin-top:1px;z-index:1}
+.st::before{content:"";position:absolute;left:10px;top:20px;bottom:0;width:2px;background:var(--line)}
+.st:last-child::before{display:none}
+.st.done .d{background:var(--teal);border-color:var(--teal)}
+.st.cur .d{border-color:var(--amber);background:var(--amber)}
+.st.cur b{font-weight:600}
+.st span{color:var(--ink-soft)}
+.st.done span{color:var(--ink-faint)}
+
+.timer{display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 12px;background:color-mix(in srgb,var(--amber) 14%,var(--card));font-size:13px}
+.timer .mono{font-size:20px;font-weight:600}
+.timer.late{background:color-mix(in srgb,var(--alert) 14%,var(--card))}
+
+.photos{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ph{aspect-ratio:1;max-width:100%;border:1.5px dashed var(--ink-faint);border-radius:10px;background:var(--paper-dim);font:500 10px var(--f-body);color:var(--ink-soft);display:flex;align-items:flex-end;justify-content:center;padding:4px;text-align:center;cursor:pointer;line-height:1.15;position:relative}
+.ph.done{border-style:solid;border-color:var(--teal);background:color-mix(in srgb,var(--teal) 14%,var(--paper-dim))}
+.ph.done::before{content:"✓";position:absolute;top:5px;left:0;right:0;font-size:16px;color:var(--teal)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field input,.field textarea{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:15px var(--f-body);background:var(--card);color:var(--ink);width:100%}
+.field textarea{min-height:60px;resize:vertical}
+.fuel{display:flex;gap:3px}
+.fuel button{flex:1;height:26px;border-radius:4px;border:1px solid var(--line);background:var(--card);cursor:pointer}
+.fuel button.on{background:var(--amber);border-color:var(--amber-dark)}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 0}
+.chk input{width:18px;height:18px;accent-color:var(--teal)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px}
+
+.sheet-bg{position:absolute;inset:0;background:var(--shade);display:flex;align-items:flex-end;z-index:5}
+.sheet{background:var(--paper);width:100%;border-radius:18px 18px 0 0;padding:16px;display:flex;flex-direction:column;gap:10px;max-height:85%;overflow-y:auto}
+.sheet h3{font-family:var(--f-head);margin:0;font-size:18px}
+.msg{max-width:80%;padding:8px 11px;border-radius:12px;font-size:14px}
+.msg.in{background:var(--card);border:1px solid var(--line);align-self:flex-start}
+.msg.out{background:color-mix(in srgb,var(--amber) 25%,var(--card));align-self:flex-end}
+.toast{position:absolute;left:16px;right:16px;bottom:74px;background:var(--ink);color:var(--paper);border-radius:12px;padding:11px 14px;font-size:14px;z-index:6}
+
+.stat{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.stat div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+.stat b{display:block;font:600 18px var(--f-mono);font-variant-numeric:tabular-nums}
+.stat small{color:var(--ink-faint);font-size:11px}
+.tx{display:flex;gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.tx:last-child{border-bottom:0}
+.tx .mono{margin-left:auto;white-space:nowrap}
+.neg{color:var(--alert)}
+.seg{display:flex;flex-direction:column;gap:6px}
+.seg label{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font-size:14px}
+.seg input{margin-top:3px;accent-color:var(--amber-dark)}
+body.embed .note{display:none}body.embed{padding:0;margin:0}body.embed .wrap{display:block}body.embed .phone{border-radius:0;border:0;height:100vh;max-height:none}
+.chat-in{display:flex;gap:6px}.chat-in input{flex:1;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:14px var(--f-body);background:var(--card);color:var(--ink)}
+.msg small{display:block;font-size:11px;color:var(--ink-faint)}
+.empty{text-align:center;color:var(--ink-soft);padding:30px 10px;font-size:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="phone" id="phone">
+    <div class="top" id="top"></div>
+    <div class="screen" id="screen"></div>
+    <nav class="tabs" id="tabs"></nav>
+  </div>
+  <aside class="note">
+    <div class="k">Экосистема · живые данные с сервера</div>
+    <h1>Приложение автоконсьержа</h1>
+    <p>Мобильное приложение водителя, который забирает машину у клиентки, везёт в СТО и возвращает. Все шаги сразу видят клиентка, СТО и диспетчер.</p>
+    <p>Что попробовать:</p>
+    <ol>
+      <li>Включить смену и взять заказ из ленты — клиентка сразу видит карточку консьержа.</li>
+      <li>Пройти шаги поездки: машинка движется на карте у клиентки, акт №1 приходит ей на подтверждение.</li>
+      <li>Акт №2 подтверждает панель СТО. После ремонта в ленте появится заказ на возврат.</li>
+      <li>«Происшествие» уходит в SOS диспетчера, чат — общий с клиенткой и мастером.</li>
+    </ol>
+    <p>Состояние хранится на сервере экосистемы и синхронизировано со всеми приложениями.</p>
+  </aside>
+</div>
+
+<script src="../shared/ma-sdk.js"></script>
+<script src="concierge-app.js"></script>
+</body>
+</html>

@@ -1,11 +1,13 @@
 {
   "name": "moy-avtomekhanik",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Мой Автомеханик — мобильная платформа автосервиса для женщин и маркетплейс заявок для СТО",
+  "description": "Экосистема «Мой автомеханик»: клиентское приложение, приложение консьержа, панель СТО и панель диспетчера на общем сервере",
   "scripts": {
-    "start": "npx --yes serve . -l 4173",
-    "dev": "npm start"
-  },
-  "license": "UNLICENSED"
+    "postinstall": "cd server && npm install && cd ../mobile && npm install",
+    "start": "cd server && npm start",
+    "dev": "cd server && npm run dev",
+    "test": "cd server && npm test",
+    "mobile:sync": "cd mobile && npm run sync"
+  }
 }
