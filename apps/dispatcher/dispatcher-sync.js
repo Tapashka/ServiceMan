@@ -114,20 +114,20 @@
         <h4>Ждёт назначения · заказ №${u.id} · ${u.leg==='ret'?'возврат клиентке':'забор у клиентки'}</h4>
         <div class="kv"><span>${esc(u.car)} · ${esc(u.client)}</span><b>${esc(u.address)} · ${esc(u.slot)}</b></div>
         <p class="warn-note" style="margin:10px 0 8px;">Ближайшие свободные к адресу ${u.leg==='ret'?'СТО':'забора'}:</p>
-        ${u.free.length ? u.free.map(c=>`<div class="kv" style="align-items:center;"><span><b style="color:var(--ink);">${esc(c.name)}</b> · ${esc(c.car)} · ★ ${c.rating} · ${String(c.dist).replace('.',',')} км${c.id==='k1'?' · <i>приложение</i>':''}</span><button class="btn btn-primary btn-sm" onclick="assign('${u.id}','${c.id}')">Назначить</button></div>`).join('') : '<p class="warn-note">Свободных консьержей на смене нет</p>'}
+        ${u.free.length ? u.free.map(c=>`<div class="kv" style="align-items:center;"><span><b style="color:var(--ink);">${esc(c.name)}</b> · ${esc(c.car)} · ★ ${c.rating} ${c.dist!=null?` · ${String(c.dist).replace('.',',')} км`:''}${c.id==='k1'?' · <i>приложение</i>':''}</span><button class="btn btn-primary btn-sm" onclick="assign('${u.id}','${c.id}')">Назначить</button></div>`).join('') : '<p class="warn-note">Свободных консьержей на смене нет</p>'}
       </div>`).join('')}
       <table class="tbl"><thead><tr><th>Консьерж</th><th>Статус</th><th>Сейчас</th><th>Штрафы</th><th></th></tr></thead><tbody>
       ${concierges.map((c,i)=>{
         const active = c.fines.filter(f=>!f.removed);
         return `<tr class="${c.status==='late'?'hl':''}">
-          <td><b>${esc(c.name)}</b>${c.live?' <span class="pill free" style="font-size:10px;">приложение</span>':''}<div class="sub">${esc(c.car)} · ★ ${c.rating}</div></td>
-          <td><span class="pill ${c.status}">${C_STATUS[c.status]}${c.status==='late'?' '+c.lateMin+' мин':''}</span></td>
+          <td class="nw"><div class="who"><b>${esc(c.name)}</b>${c.live?'<span class="pill free" style="font-size:10px;">приложение</span>':''}</div><div class="sub">${esc(c.car)} · ★ ${c.rating}</div></td>
+          <td class="nw"><span class="pill ${c.status}">${C_STATUS[c.status]}${c.status==='late'?' '+c.lateMin+' мин':''}</span></td>
           <td>${c.order?`Заказ №${c.order}<div class="sub">${esc(c.note)}</div>`:`<span class="sub">${esc(c.note)}</span>`}</td>
-          <td class="mono">${active.length?active.map(f=>`${money(f.sum)} · №${f.order}`).join('<br>'):'—'}${c.fines.some(f=>f.removed)?'<div class="sub">есть снятые</div>':''}</td>
-          <td style="text-align:right; white-space:nowrap;">
+          <td class="mono nw">${active.length?active.map(f=>`${money(f.sum)} · №${f.order}`).join('<br>'):'—'}${c.fines.some(f=>f.removed)?'<div class="sub">есть снятые</div>':''}</td>
+          <td><div class="cell-actions">
             ${c.status==='late'?`<button class="btn btn-outline btn-sm" onclick="reassign(${i})">Переназначить</button> `:''}
             ${active.length?`<button class="btn btn-outline btn-sm" onclick="fineEdit=${i}; renderConcierges();">Снять штраф</button>`:''}
-          </td></tr>
+          </div></td></tr>
           ${fineEdit===i?`<tr><td colspan="5" style="background:var(--paper);">
             <div style="display:flex; gap:8px; align-items:center;"><select class="inp" id="fineReason" style="max-width:360px;"><option>Пробка из-за ДТП на маршруте</option><option>Задержка по вине клиентки</option><option>Диспетчер изменил маршрут</option><option>Другое</option></select>
             <button class="btn btn-dark btn-sm" onclick="removeFine(${i})">Снять с обоснованием</button><button class="btn btn-outline btn-sm" onclick="fineEdit=null; renderConcierges();">Отмена</button></div></td></tr>`:''}`;
